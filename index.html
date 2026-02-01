@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>α波とシンクロ</title>
+<title>α波とシンクロしよう</title>
+
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+
 <style>
 body {
   margin:0;
@@ -115,7 +118,7 @@ body {
 
 #author {
   position: fixed;
-  bottom: 60px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   color: #cfe9ff;
@@ -158,6 +161,21 @@ body {
   opacity:0.85;
 }
 
+#qrCode {
+  position: fixed;
+  right: 15px;
+  bottom: 10px;
+  width: 90px;          /* 好みで調整 */
+  height: auto;
+  z-index: 30;
+  display: none;         /* 最初は非表示 */
+  background: white;     /* QRが見やすくなる */
+  padding: 6px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+
 </style>
 </head>
 <body>
@@ -175,6 +193,7 @@ body {
   <div id="author">ponde3110&copy;</div>
   <button id="startBtn">START</button>
   <button id="muteBtn">🔊</button>
+  <img id="qrCode" src="QR.png" alt="QR code">
 </div>
 
 <script>
@@ -281,7 +300,9 @@ const scoreLabel = document.getElementById("score");
 const hiLabel = document.getElementById("hiscore");
 const gameoverLabel = document.getElementById("gameover");
 const livesLabel = document.getElementById("lives");
-const startBtn = document.getElementById("startBtn");
+
+const qrCode = document.getElementById("qrCode");
+qrCode.style.display = "block"; // ← ページ読み込み直後（トップ画面）で表示
 
 let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
 let lives = 3, invincible = 0, isGameOver = false, gameStarted = false, scoreStarted = false;
@@ -453,22 +474,36 @@ function drawBall() {
 
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
-  if(isGameOver) return;
-  clearTimeout(chordTimeout);   // ←BGMを停止
+  if (isGameOver) return;
+
+  clearTimeout(chordTimeout);
   isGameOver = true;
   gameoverLabel.style.display = "block";
-  hiScore = Math.max(hiScore,score);
-  localStorage.setItem("hiScore",Math.floor(hiScore));
-  hiLabel.textContent = "HI "+Math.floor(hiScore);
-  setTimeout(()=>{
-    startBtn.style.display="block";
+
+  hiScore = Math.max(hiScore, score);
+  localStorage.setItem("hiScore", Math.floor(hiScore));
+  hiLabel.textContent = "HI " + Math.floor(hiScore);
+
+  setTimeout(() => {
     gameStarted = false;
-    gameoverLabel.style.display="none";
-    title.style.display="block";
-    author.style.display="block";
-    ballX = 0; ballY = H()*0.5; ballVX = 0; ballVY = 0; inputX = 0; inputY = 0;
-  },5000);
+    isGameOver = false;
+
+    gameoverLabel.style.display = "none";
+    title.style.display = "block";
+    author.style.display = "block";
+    startBtn.style.display = "block";
+    qrCode.style.display = "block";
+
+    ballX = 0;
+    ballY = H() * 0.5;
+    ballVX = 0;
+    ballVY = 0;
+    inputX = 0;
+    inputY = 0;
+  }, 5000);
 }
+
+
 
 /* ===== キー操作 ===== */
 addEventListener("keydown", e => {
@@ -535,31 +570,49 @@ let gameOverPending = false;
 
 /* ===== ループ ===== */
 function loop(){
-  if(!hiLabel.dataset.init){ hiLabel.textContent="HI "+Math.floor(hiScore); hiLabel.dataset.init=true; }
+  if(!hiLabel.dataset.init){
+    hiLabel.textContent = "HI " + Math.floor(hiScore);
+    hiLabel.dataset.init = true;
+  }
+
   drawStars();
   drawRoad();
-  offset += 0.2;  // 小さいほどゆっくり
-  if(scoreStarted){
-    const forward = (H()-ballY)*0.002;
-    offset += forward;
-    if(gameStarted && !isGameOver) score += (0.4 + forward)*10;
+
+  // ===== スクロール速度制御（完全・停止しない）=====
+  const baseSpeed = 0.2;
+
+  if (gameStarted) {
+    // ゲーム中 ＆ GAME OVER表示中
+    const forward = (H() - ballY) * 0.002;
+    offset += baseSpeed + forward;
+
+    if (!isGameOver) {
+      score += (0.4 + forward) * 10;
+    }
+  } else {
+    // 本当のトップ画面
+    offset += baseSpeed;
   }
+
   if(gameStarted && !isGameOver) updateBall();
+
   drawBall();
-  scoreLabel.textContent="SCORE "+Math.floor(score);
+  scoreLabel.textContent = "SCORE " + Math.floor(score);
   updateLivesDisplay();
+
   if(gameOverPending && !isGameOver){
-    if(Math.abs(ballVX)<1 && Math.abs(ballVY)<1){
+    if(Math.abs(ballVX) < 1 && Math.abs(ballVY) < 1){
       ballDestroyed = true;
       destroySound();
       gameOverPending = false;
       setTimeout(()=>{
         updateGameOver();
-        ballDestroyed=false;
-        ballScale=1;
+        ballDestroyed = false;
+        ballScale = 1;
       },1000);
     }
   }
+
   requestAnimationFrame(loop);
 }
 
@@ -586,6 +639,8 @@ startBtn.onclick = ()=>{
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
+
+  qrCode.style.display = "none"; // ← プレイ中は非表示
 
   gameStarted = true;
   scoreStarted = true;
