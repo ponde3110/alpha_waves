@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>氷の宇宙ロード</title>
+<style>
+body {
+  margin:0;
+  background:black;
+  overflow:hidden;
+  position:relative;
+}
+#screen {
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+#hud {
+  position:fixed;
+  top:10px;
+  left:0;
+  width:100%;
+  text-align:center;
+  color:#cfe9ff;
+  font-family:Arial;
+  font-size:16px;
+  z-index:10;
+  pointer-events:none;
+}
+#lives {
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  color:#cfe9ff;
+  font-family:Arial;
+  font-size:16px;
+  pointer-events:none;
+}
+#hiscore {
+  position:absolute;
+  left:10px;
+  top:10px;
+  color:#cfe9ff;
+  font-family:Arial;
+  font-size:16px;
+}
+#score {
+  position:absolute;
+  right:10px;
+  top:10px;
+  color:#cfe9ff;
+  font-family:Arial;
+  font-size:16px;
+}
+#gameover {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #ff4444;           /* 内側の文字色 */
+  font-size: 32px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.6);  /* 半透明の背景 */
+  padding: 16px 32px;       /* ボタン風の余白 */
+  border-radius: 12px;      /* 丸み */
+  z-index: 20;
+  display: none;
+  font-family: 'Arial Black', Arial, sans-serif;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* 立体感 */
+}
+#startBtn {
+  position: fixed;
+  top:70%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  padding:12px 24px;
+  font-size:24px;
+  font-weight: bold;
+  border-radius:12px;
+  background: rgba(0, 0, 0, 0.6);
+  color:#ff4444;
+  cursor:pointer;
+  z-index:20;
+}
+#muteBtn {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  padding: 0;
+  font-size: 24px;
+  background: none;
+  border: none;
+  color: #cfe9ff;
+  cursor: pointer;
+  z-index: 20;
+  outline: none;
+}
+#muteBtn:focus { outline: none; }
+
+#title {
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  color: #ff4444;
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-size: 48px;
+  text-align: center;
+  z-index: 12;
+  pointer-events: none;
+}
+
+#author {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #cfe9ff;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  text-align: center;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.title-main{
+  font-size:64px;
+  letter-spacing:3px;
+
+  color:#ff4444;     /* 本体の赤 */
+
+  white-space: nowrap;
+
+  text-shadow:
+    0 0 6px rgba(255,80,80,0.7),
+    0 0 14px rgba(255,60,60,0.6),
+    0 0 28px rgba(255,40,40,0.5);
+
+  font-weight:600;
+}
+
+
+.title-sub{
+  font-size:24px;
+  letter-spacing:2px;
+  margin-top:6px;
+  color:#cfe9ff;
+  font-family:Arial, sans-serif;
+
+  /* 控えめな光 */
+  text-shadow:
+    0 0 4px rgba(200,220,255,0.4),
+    0 0 8px rgba(120,180,255,0.3);
+
+  opacity:0.85;
+}
+
+</style>
+</head>
+<body>
+
+<div id="screen">
+  <canvas id="canvas"></canvas>
+  <div id="hiscore">HI 0</div>
+  <div id="score">SCORE 0</div>
+  <div id="lives"></div>
+  <div id="gameover">GAME OVER</div>
+  <div id="title">
+    <div class="title-main">α waves</div>
+    <div class="title-sub">- give it a sync -</div>
+  </div>
+  <div id="author">ponde3110&copy;</div>
+  <button id="startBtn">START</button>
+  <button id="muteBtn">🔊</button>
+</div>
+
+<script>
+/* ===== Audio ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioStarted = false;
+const bgGain = audioCtx.createGain();
+bgGain.gain.value = 0.04;
+bgGain.connect(audioCtx.destination);
+
+const chords = [
+  [220,330,440],
+  [247,370,494],
+  [262,392,523],
+  [294,440,587]
+];
+let chordIndex = 0, chordTimeout;
+let muted = localStorage.getItem("muted")==="true";
+
+const muteBtn = document.getElementById("muteBtn");
+muteBtn.onclick = () => {
+  muted = !muted;
+  localStorage.setItem("muted", muted);
+  bgGain.gain.value = muted ? 0 : 0.04;   // ←元の bgGain を使う
+  muteBtn.textContent = muted ? "🔇" : "🔊";
+};
+
+muteBtn.textContent = muted ? "🔇" : "🔊";
+
+
+function playChord() {
+  if (isGameOver) return;
+
+  const freqs = [220, 330]; // 優しい2音
+
+  freqs.forEach(f => {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.value = f;
+
+    g.gain.value = muted ? 0 : 0.12;
+
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+
+    osc.start();
+
+    g.gain.exponentialRampToValueAtTime(
+      0.0001,
+      audioCtx.currentTime + 2.5
+    );
+
+    osc.stop(audioCtx.currentTime + 2.5);
+  });
+
+  chordTimeout = setTimeout(playChord, 5000);
+}
+
+
+function hitSound() {
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = "square";
+  o.frequency.value = 600;
+  g.gain.value = muted ? 0 : 0.2;
+  o.connect(g);
+  g.connect(audioCtx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  o.stop(audioCtx.currentTime + 0.15);
+}
+
+function destroySound() {
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = "sawtooth";
+  o.frequency.value = 400;
+  g.gain.value = muted ? 0 : 0.3;
+  o.connect(g);
+  g.connect(audioCtx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+  o.stop(audioCtx.currentTime + 0.8);
+}
+
+/* ===== Canvas ===== */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+  const h = innerHeight;
+  const w = h * 9/16;
+  canvas.height = h;
+  canvas.width = w;
+}
+resize();
+addEventListener("resize", resize);
+
+const W = () => canvas.width;
+const H = () => canvas.height;
+const scoreLabel = document.getElementById("score");
+const hiLabel = document.getElementById("hiscore");
+const gameoverLabel = document.getElementById("gameover");
+const livesLabel = document.getElementById("lives");
+const startBtn = document.getElementById("startBtn");
+
+let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
+let lives = 3, invincible = 0, isGameOver = false, gameStarted = false, scoreStarted = false;
+const roadWidth = 150;
+let ballDestroyed = false, ballScale = 1;
+let ballX=0, ballY=H()*0.6, ballVX=0, ballVY=0, inputX=0, inputY=0;
+const BALL_R = 14;
+const keys = {};
+
+// ===== スマホ傾き操作 =====
+let tiltInputX = 0, tiltInputY = 0;
+
+function enableDeviceOrientation() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(res=>{
+      if(res==='granted') window.addEventListener('deviceorientation', handleOrientation);
+    }).catch(console.error);
+  } else {
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
+}
+
+function handleOrientation(e) {
+  const gamma = e.gamma || 0;
+  const beta = e.beta || 0;
+  const sensitivity = 0.05;
+  tiltInputX = gamma * sensitivity;
+  tiltInputY = beta * sensitivity;
+}
+
+/* ===== 星 ===== */
+const stars = [];
+for (let i=0; i<120; i++) {
+  stars.push({
+    x: Math.random()*W(),
+    y: Math.random()*H(),
+    d: Math.random()*2+0.5,
+    s: Math.random()*0.8+0.3,
+    a: Math.random()*0.6+0.3,
+    c: [[255,255,255],[200,220,255],[255,235,200]][Math.random()*3|0]
+  });
+}
+
+function drawStars() {
+  ctx.fillStyle = "black";
+  ctx.fillRect(0,0,W(),H());
+  stars.forEach(s => {
+    s.y += 0.12 * s.d;
+    if (s.y > H()) {
+      s.y = 0;
+      s.x = Math.random()*W();
+    }
+    ctx.fillStyle = `rgba(${s.c[0]},${s.c[1]},${s.c[2]},${s.a})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.s*s.d, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+/* ===== 道 ===== */
+function roadCenter(y) {
+  return W()/2 + Math.sin((y+offset)*0.01)*80 + Math.sin((y+offset)*0.03)*30;
+}
+
+
+function drawRoad() {
+  const leftEdge = [];
+  const rightEdge = [];
+
+  // 左右端の座標を計算（滑らかにするため細かめに）
+  for (let y = 0; y <= H(); y += 2) {
+    const cx = roadCenter(y);
+    leftEdge.push({ x: cx - roadWidth / 2, y });
+    rightEdge.push({ x: cx + roadWidth / 2, y });
+  }
+
+  // 道路本体をスライスごとに塗りつぶす
+  for (let i = 0; i < leftEdge.length; i++) {
+    const y = leftEdge[i].y;
+    const leftX = leftEdge[i].x;
+    const rightX = rightEdge[i].x;
+
+    // 道路幅に沿ったグラデーション
+    const grad = ctx.createLinearGradient(leftX, 0, rightX, 0);
+    grad.addColorStop(0, "#5a7fbf");    // 左端：薄め
+    grad.addColorStop(0.25, "#1e3b66"); // 左中間：少し暗め
+    grad.addColorStop(0.5, "#102040");  // 中央：暗め
+    grad.addColorStop(0.75, "#1e3b66"); // 右中間：少し暗め
+    grad.addColorStop(1, "#5a7fbf");    // 右端：薄め
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(leftX, y, rightX - leftX, 2); // 1スライスずつ描画
+  }
+
+  // 道路枠線を描く
+  ctx.strokeStyle = "#222";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  for (let i = 0; i < leftEdge.length; i++) {
+    if (i === 0) ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
+    else ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  }
+  for (let i = rightEdge.length - 1; i >= 0; i--) {
+    ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // センター点線を道路曲線に沿って描く
+  ctx.strokeStyle = "#6fa8ff"; // ←カッコいい青
+  ctx.setLineDash([20, 20]);
+  ctx.beginPath();
+  for (let i = 0; i < leftEdge.length; i++) {
+    const cx = (leftEdge[i].x + rightEdge[i].x) / 2;
+    if (i === 0) ctx.moveTo(cx, leftEdge[i].y);
+    else ctx.lineTo(cx, leftEdge[i].y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+
+
+
+
+
+/* ===== ボール描画 ===== */
+function drawBall() {
+  if(isGameOver) return;
+  if(!gameStarted){
+    const ballYTop = H()*0.5;
+    const cx = roadCenter(ballYTop);
+    const cy = ballYTop;
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy+10, 14,5,0,0,Math.PI*2);
+    ctx.fill();
+    const g = ctx.createRadialGradient(cx-5, cy-5, 2, cx, cy, 18);
+    g.addColorStop(0,"#fff");
+    g.addColorStop(1,"#4fa6ff");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, BALL_R, 0, Math.PI*2);
+    ctx.fill();
+    return;
+  }
+  const cx = roadCenter(ballY) + ballX;
+  if(!ballDestroyed){
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(cx, ballY+10, 14,5,0,0,Math.PI*2);
+    ctx.fill();
+    const g = ctx.createRadialGradient(cx-5, ballY-5, 2, cx, ballY, 18);
+    g.addColorStop(0,"#fff");
+    g.addColorStop(1,"#4fa6ff");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, ballY, BALL_R*ballScale, 0, Math.PI*2);
+    ctx.fill();
+  } else {
+    const r = BALL_R*ballScale;
+    if(r > 0.5){
+      ctx.fillStyle = `rgba(255,255,255,${ballScale})`;
+      ctx.beginPath();
+      ctx.arc(cx, ballY, r, 0, Math.PI*2);
+      ctx.fill();
+      ballScale *= 0.92;
+    }
+  }
+}
+
+/* ===== ゲームオーバー ===== */
+function updateGameOver() {
+  if(isGameOver) return;
+  clearTimeout(chordTimeout);   // ←BGMを停止
+  isGameOver = true;
+  gameoverLabel.style.display = "block";
+  hiScore = Math.max(hiScore,score);
+  localStorage.setItem("hiScore",Math.floor(hiScore));
+  hiLabel.textContent = "HI "+Math.floor(hiScore);
+  setTimeout(()=>{
+    startBtn.style.display="block";
+    gameStarted = false;
+    gameoverLabel.style.display="none";
+    title.style.display="block";
+    author.style.display="block";
+    ballX = 0; ballY = H()*0.5; ballVX = 0; ballVY = 0; inputX = 0; inputY = 0;
+  },5000);
+}
+
+/* ===== キー操作 ===== */
+addEventListener("keydown", e => {
+  keys[e.code] = true;
+  if(!scoreStarted && (e.code==="ArrowLeft" || e.code==="ArrowRight")) scoreStarted = true;
+});
+addEventListener("keyup", e => keys[e.code] = false);
+
+/* ===== ライフ表示 ===== */
+const maxLives = 3;
+function updateLivesDisplay(){
+  livesLabel.innerHTML="";
+  for(let i=0;i<lives;i++){
+    const heart = document.createElement("span");
+    heart.textContent="❤️";
+    heart.style.fontSize="24px";
+    heart.style.marginRight="4px";
+    livesLabel.appendChild(heart);
+  }
+}
+
+/* ===== ボール更新 ===== */
+function updateBall(){
+  if(ballDestroyed) return;
+  const tx = (keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
+  const ty = (keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+  const targetX = tx + tiltInputX;
+  const targetY = ty + tiltInputY;
+  inputX += (targetX - inputX)*0.02;
+  inputY += (targetY - inputY)*0.02;
+  ballVX += inputX*0.10;
+  ballVY += inputY*0.10;
+  ballVX *= 0.988;
+  ballVY *= 0.988;
+  // 操作していない時は自動で上に流れる
+if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
+  ballVY = -0.6;   // 上へ
+  ballVX = 0.1;    // 右へ
+}
+
+
+  ballX += ballVX;
+  ballY += ballVY;
+  const limit = roadWidth/2 - BALL_R;
+  if((ballX>=limit || ballX<=-limit) && invincible<=0){
+    invincible=60;
+    ballVX*=-1.2;
+    hitSound();
+    if(lives>0){ lives--; updateLivesDisplay(); if(lives<=0) gameOverPending=true; }
+  }
+  if((ballY<=40 || ballY>=H()-40) && invincible<=0){
+    invincible=60;
+    ballVY*=-1.2;
+    hitSound();
+  }
+  if(ballX>limit) ballX=limit;
+  if(ballX<-limit) ballX=-limit;
+  if(ballY<40) ballY=40;
+  if(ballY>H()-40) ballY=H()-40;
+  if(invincible>0) invincible--;
+}
+
+let gameOverPending = false;
+
+/* ===== ループ ===== */
+function loop(){
+  if(!hiLabel.dataset.init){ hiLabel.textContent="HI "+Math.floor(hiScore); hiLabel.dataset.init=true; }
+  drawStars();
+  drawRoad();
+  offset += 0.2;  // 小さいほどゆっくり
+  if(scoreStarted){
+    const forward = (H()-ballY)*0.002;
+    offset += forward;
+    if(gameStarted && !isGameOver) score += (0.4 + forward)*10;
+  }
+  if(gameStarted && !isGameOver) updateBall();
+  drawBall();
+  scoreLabel.textContent="SCORE "+Math.floor(score);
+  updateLivesDisplay();
+  if(gameOverPending && !isGameOver){
+    if(Math.abs(ballVX)<1 && Math.abs(ballVY)<1){
+      ballDestroyed = true;
+      destroySound();
+      gameOverPending = false;
+      setTimeout(()=>{
+        updateGameOver();
+        ballDestroyed=false;
+        ballScale=1;
+      },1000);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+loop();
+
+
+/* ===== タイトルアニメーション ===== */
+const title = document.getElementById("title");
+const author = document.getElementById("author");
+let titleScale = 1, scaleDirection = 1;
+function animateTitle() {
+  if(!gameStarted){
+    titleScale += 0.0025 * scaleDirection;
+    if(titleScale > 1.15) scaleDirection = -1;
+    if(titleScale < 0.95) scaleDirection = 1;
+    title.style.transform = `translate(-50%, -50%) scale(${titleScale})`;
+  }
+  requestAnimationFrame(animateTitle);
+}
+animateTitle();
+
+/* ===== STARTボタン ===== */
+startBtn.onclick = ()=>{
+  startBtn.style.display = "none";
+  title.style.display = "none";
+  author.style.display = "none";
+
+  gameStarted = true;
+  scoreStarted = true;
+  isGameOver = false;
+
+  lives = 3;
+  score = 0;
+  ballX = 0; ballY = H()*0.5; ballVX = 0; ballVY = -0.6; inputX = 0; inputY = 0;
+
+  chordPlaying = false;
+
+  // BGMリセット
+  audioCtx.resume().then(()=>{
+    playChord(); // 直接再生
+  });
+
+  enableDeviceOrientation();
+};
+
+</script>
+</body>
+</html
