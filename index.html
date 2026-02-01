@@ -305,20 +305,13 @@ function enableDeviceOrientation() {
   }
 }
 
-let lastBeta = 0;      // 最新のβ角を保持
-let betaOffset = 0;    // ニュートラル補正値
-
 function handleOrientation(e) {
   const gamma = e.gamma || 0;
   const beta = e.beta || 0;
-
-  lastBeta = beta;      // 現在のβを保持
-
   const sensitivity = 0.05;
   tiltInputX = gamma * sensitivity;
-  tiltInputY = (beta - betaOffset) * sensitivity;  // 補正後
+  tiltInputY = beta * sensitivity;
 }
-
 
 /* ===== 星 ===== */
 const stars = [];
@@ -410,9 +403,6 @@ function drawRoad() {
   ctx.stroke();
   ctx.setLineDash([]);
 }
-
-
-
 
 
 
@@ -592,13 +582,10 @@ function animateTitle() {
 animateTitle();
 
 /* ===== STARTボタン ===== */
-startBtn.onclick = ()=> {
+startBtn.onclick = ()=>{
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
-
-  // 前後傾きのニュートラル補正値を設定
-  betaOffset = lastBeta || 0;
 
   gameStarted = true;
   scoreStarted = true;
@@ -610,10 +597,20 @@ startBtn.onclick = ()=> {
 
   chordPlaying = false;
 
-  audioCtx.resume().then(()=> playChord());
+  // BGMリセット
+  audioCtx.resume().then(()=>{
+    playChord(); // 直接再生
+  });
 
   enableDeviceOrientation();
 };
+
+// ===== ENTERキーでスタート =====
+addEventListener("keydown", e => {
+  if (!gameStarted && (e.code === "Enter" || e.code === "NumpadEnter")) {
+    startBtn.onclick(); // ボタンの処理をそのまま呼び出す
+  }
+});
 
 
 </script>
