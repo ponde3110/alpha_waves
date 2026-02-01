@@ -305,13 +305,20 @@ function enableDeviceOrientation() {
   }
 }
 
+let lastBeta = 0;      // 最新のβ角を保持
+let betaOffset = 0;    // ニュートラル補正値
+
 function handleOrientation(e) {
   const gamma = e.gamma || 0;
   const beta = e.beta || 0;
+
+  lastBeta = beta;      // 現在のβを保持
+
   const sensitivity = 0.05;
   tiltInputX = gamma * sensitivity;
-  tiltInputY = beta * sensitivity;
+  tiltInputY = (beta - betaOffset) * sensitivity;  // 補正後
 }
+
 
 /* ===== 星 ===== */
 const stars = [];
@@ -585,10 +592,13 @@ function animateTitle() {
 animateTitle();
 
 /* ===== STARTボタン ===== */
-startBtn.onclick = ()=>{
+startBtn.onclick = ()=> {
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
+
+  // 前後傾きのニュートラル補正値を設定
+  betaOffset = lastBeta || 0;
 
   gameStarted = true;
   scoreStarted = true;
@@ -600,13 +610,11 @@ startBtn.onclick = ()=>{
 
   chordPlaying = false;
 
-  // BGMリセット
-  audioCtx.resume().then(()=>{
-    playChord(); // 直接再生
-  });
+  audioCtx.resume().then(()=> playChord());
 
   enableDeviceOrientation();
 };
+
 
 </script>
 </body>
