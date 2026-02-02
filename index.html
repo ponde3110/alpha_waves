@@ -15,11 +15,14 @@ body {
   position:relative;
 }
 #screen {
-  position:fixed;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
+
 #hud {
   position:fixed;
   top:10px;
@@ -77,7 +80,7 @@ body {
   border: 1px solid rgba(255, 100, 100, 0.4);
 
   white-space: nowrap;             /* ← 改行させない（最重要） */
-  min-width: 420px;                /* ← 横長にする */
+  /* min-width: 420px; ← 横長にする */
 }
 
 
@@ -154,7 +157,7 @@ body {
 
 
 .title-sub{
-  font-size:30px;
+  font-size:28px;
   letter-spacing:2px;
   margin-top:6px;
   color:#cfe9ff;
@@ -172,7 +175,7 @@ body {
   position: fixed;
   right: 10px;
   bottom: 10px;
-  width: 70px;          /* 好みで調整 */
+  width: 100px;          /* 好みで調整 */
   height: auto;
   z-index: 30;
   display: none;         /* 最初は非表示 */
@@ -641,7 +644,7 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
   ballY += ballVY;
   const limit = roadWidth/2 - BALL_R;
   if((ballX>=limit || ballX<=-limit) && invincible<=0){
-    invincible=60;
+    invincible=80;
     ballVX*=-1.2;
     hitSound();
   
@@ -659,7 +662,7 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
 }
 
   }
-  if((ballY<=40 || ballY>=H()-40) && invincible<=0){
+  if((ballY<=20 || ballY>=H()-20) && invincible<=0){
   invincible = 60;
   ballVY *= -1.2;
   hitSound();
@@ -680,8 +683,8 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
 
   if(ballX>limit) ballX=limit;
   if(ballX<-limit) ballX=-limit;
-  if(ballY<40) ballY=40;
-  if(ballY>H()-40) ballY=H()-40;
+  if(ballY<20) ballY=20;
+  if(ballY>H()-0) ballY=H()-20;
   if(invincible>0) invincible--;
 }
 
