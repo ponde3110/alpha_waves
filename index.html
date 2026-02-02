@@ -791,93 +791,39 @@ function animateTitle() {
 }
 animateTitle();
 
-/* ===== STARTボタン（完成版） ===== */
-startBtn.onclick = () => {
-
-  /* --- UIを非表示／表示 --- */
+/* ===== STARTボタン ===== */
+startBtn.onclick = ()=>{
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
 
-  qrCode.style.display = "none";      // プレイ中は非表示
-  controlImg.style.display = "none";  // 操作説明を消す
-  muteBtn.style.display = "block";    // ゲーム中のみ表示
+  qrCode.style.display = "none"; // ← プレイ中は非表示
+  controlImg.style.display = "none";   // ← ゲーム中は消す
+  muteBtn.style.display = "block";   // ← ゲーム中だけ表示
 
-  /* --- スリープ防止（対応端末のみ） --- */
-  if ('wakeLock' in navigator) {
-    enableWakeLock();
-  }
 
-  /* --- ゲーム状態初期化 --- */
   gameStarted = true;
   scoreStarted = true;
   isGameOver = false;
 
   lives = 3;
   score = 0;
-
-  ballX = 0;
-  ballY = H() * 0.5;
-  ballVX = 0;
-  ballVY = -0.6;
-
-  inputX = 0;
-  inputY = 0;
+  ballX = 0; ballY = H()*0.5; ballVX = 0; ballVY = -0.6; inputX = 0; inputY = 0;
 
   chordPlaying = false;
 
-  /* --- BGM開始（ユーザー操作内） --- */
-  audioCtx.resume().then(() => {
-    playChord();
+  // BGMリセット
+  audioCtx.resume().then(()=>{
+    playChord(); // 直接再生
   });
 
-  /* --- ジャイロ有効化（スマホ） --- */
   enableDeviceOrientation();
 };
-
 
 // ===== ENTERキーでスタート =====
 addEventListener("keydown", e => {
   if (!gameStarted && (e.code === "Enter" || e.code === "NumpadEnter")) {
     startBtn.onclick(); // ボタンの処理をそのまま呼び出す
-  }
-});
-
-let wakeLock = null;
-
-// Wake Lockを要求する関数
-async function enableWakeLock() {
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    // console.logだけにするので画面表示はなし
-    console.log('Wake Lock が有効になりました');
-
-    wakeLock.addEventListener('release', () => {
-      console.log('Wake Lock が解除されました');
-    });
-  } catch (err) {
-    console.error('Wake Lock の取得に失敗:', err);
-  }
-}
-
-// Wake Lockを解除する関数
-function disableWakeLock() {
-  if (wakeLock !== null) {
-    wakeLock.release();
-    wakeLock = null;
-    console.log('Wake Lock を解除しました');
-  }
-}
-
-// ゲーム開始時に呼ぶ
-enableWakeLock();
-
-// タブ非表示→表示になったときに再取得
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    enableWakeLock();
-  } else {
-    wakeLock = null;
   }
 });
 
