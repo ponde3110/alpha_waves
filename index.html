@@ -67,12 +67,13 @@ body {
   font-size: 32px;
   font-weight: bold;
   background: rgba(0, 0, 0, 0.6);  /* 半透明の背景 */
-  padding: 16px 32px;       /* ボタン風の余白 */
+  padding: 16px 16px;       /* ボタン風の余白 */
   border-radius: 12px;      /* 丸み */
   z-index: 20;
   display: none;
   font-family: 'Arial Black', Arial, sans-serif;
   box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* 立体感 */
+  border: 1px solid rgba(255, 100, 100, 0.4);  /* ← 薄いボーダー */
 }
 #startBtn {
   position: fixed;
@@ -163,9 +164,9 @@ body {
 
 #qrCode {
   position: fixed;
-  right: 15px;
+  right: 10px;
   bottom: 10px;
-  width: 90px;          /* 好みで調整 */
+  width: 70px;          /* 好みで調整 */
   height: auto;
   z-index: 30;
   display: none;         /* 最初は非表示 */
@@ -175,6 +176,18 @@ body {
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
+.gameover-main {
+  /* 何も指定しない：今まで通り赤・サイズ維持 */
+}
+
+.gameover-sub {
+  margin-top: 8px;
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  color: #cfe9ff;
+  opacity: 0.75;
+  font-family: Arial, sans-serif;
+}
 
 </style>
 </head>
@@ -185,9 +198,12 @@ body {
   <div id="hiscore">HI 0</div>
   <div id="score">SCORE 0</div>
   <div id="lives"></div>
-  <div id="gameover">GAME OVER</div>
+  <div id="gameover">
+    <div class="gameover-main">GAME OVER</div>
+   <div class="gameover-sub">α-wave sync lost</div>
+  </div>
   <div id="title">
-    <div class="title-main">α waves</div>
+    <div class="title-main">α-waves</div>
     <div class="title-sub">- give it a sync -</div>
   </div>
   <div id="author">ponde3110&copy;</div>
@@ -256,30 +272,76 @@ function playChord() {
 
 
 function hitSound() {
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = "square";
-  o.frequency.value = 600;
-  g.gain.value = muted ? 0 : 0.2;
-  o.connect(g);
-  g.connect(audioCtx.destination);
-  o.start();
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-  o.stop(audioCtx.currentTime + 0.15);
+  if (muted) return;
+
+  const now = audioCtx.currentTime;
+
+  // ノイズ生成
+  const bufferSize = audioCtx.sampleRate * 0.15;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+  }
+
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+
+  // フィルター（潰れた質感）
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(700, now);
+  filter.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+
+  // 音量エンベロープ
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.4, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  noise.start(now);
+  noise.stop(now + 0.2);
 }
 
+
 function destroySound() {
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = "sawtooth";
-  o.frequency.value = 400;
-  g.gain.value = muted ? 0 : 0.3;
-  o.connect(g);
-  g.connect(audioCtx.destination);
-  o.start();
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-  o.stop(audioCtx.currentTime + 0.8);
+  const now = audioCtx.currentTime;
+
+  // ノイズ生成
+  const bufferSize = audioCtx.sampleRate * 2.5;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+  }
+
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+
+  // フィルター（徐々に低く沈む）
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1200, now);
+  filter.frequency.exponentialRampToValueAtTime(120, now + 2.5);
+
+  // 音量制御
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(muted ? 0 : 0.35, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  noise.start(now);
+  noise.stop(now + 3);
 }
+
 
 /* ===== Canvas ===== */
 const canvas = document.getElementById("canvas");
@@ -460,16 +522,33 @@ function drawBall() {
     ctx.beginPath();
     ctx.arc(cx, ballY, BALL_R*ballScale, 0, Math.PI*2);
     ctx.fill();
-  } else {
-    const r = BALL_R*ballScale;
-    if(r > 0.5){
-      ctx.fillStyle = `rgba(255,255,255,${ballScale})`;
-      ctx.beginPath();
-      ctx.arc(cx, ballY, r, 0, Math.PI*2);
-      ctx.fill();
-      ballScale *= 0.92;
-    }
+} else {
+  explodeFrame += 0.05; // 超スロー
+
+  // 中央の光（縮小）
+  const coreR = BALL_R * (1 - explodeFrame * 0.05);
+  if (coreR > 0) {
+    const g = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
+    g.addColorStop(0, "rgba(255,255,255,0.9)");
+    g.addColorStop(1, "rgba(100,180,255,0.3)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
+    ctx.fill();
   }
+
+  // 外側リング（拡散）
+  const ringR = BALL_R + explodeFrame * 3;
+  const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
+  if (ringAlpha > 0) {
+    ctx.strokeStyle = `rgba(180,220,255,${ringAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 }
 
 /* ===== ゲームオーバー ===== */
@@ -515,15 +594,22 @@ addEventListener("keyup", e => keys[e.code] = false);
 /* ===== ライフ表示 ===== */
 const maxLives = 3;
 function updateLivesDisplay(){
-  livesLabel.innerHTML="";
-  for(let i=0;i<lives;i++){
+  // トップ画面では表示しない
+  if (!gameStarted) {
+    livesLabel.innerHTML = "";
+    return;
+  }
+
+  livesLabel.innerHTML = "";
+  for(let i = 0; i < lives; i++){
     const heart = document.createElement("span");
-    heart.textContent="❤️";
-    heart.style.fontSize="24px";
-    heart.style.marginRight="4px";
+    heart.textContent = "❤️";
+    heart.style.fontSize = "24px";
+    heart.style.marginRight = "4px";
     livesLabel.appendChild(heart);
   }
 }
+
 
 /* ===== ボール更新 ===== */
 function updateBall(){
@@ -552,7 +638,20 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
     invincible=60;
     ballVX*=-1.2;
     hitSound();
-    if(lives>0){ lives--; updateLivesDisplay(); if(lives<=0) gameOverPending=true; }
+  
+  if(lives > 0){
+  lives--;
+  updateLivesDisplay();
+
+  if(lives <= 0){
+    gameOverPending = true;
+
+    // ★ 強制的に減速させる
+    ballVX *= 0.3;
+    ballVY *= 0.3;
+  }
+}
+
   }
   if((ballY<=40 || ballY>=H()-40) && invincible<=0){
     invincible=60;
@@ -567,6 +666,7 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
 }
 
 let gameOverPending = false;
+let explodeFrame = 0;
 
 /* ===== ループ ===== */
 function loop(){
@@ -604,6 +704,7 @@ function loop(){
     if(Math.abs(ballVX) < 1 && Math.abs(ballVY) < 1){
       ballDestroyed = true;
       destroySound();
+      explodeFrame = 0;   // ← 追加
       gameOverPending = false;
       setTimeout(()=>{
         updateGameOver();
