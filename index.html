@@ -57,24 +57,30 @@ body {
   font-family:Arial;
   font-size:16px;
 }
+
 #gameover {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: #ff4444;           /* 内側の文字色 */
+  color: #ff4444;
   font-size: 32px;
   font-weight: bold;
-  background: rgba(0, 0, 0, 0.6);  /* 半透明の背景 */
-  padding: 16px 16px;       /* ボタン風の余白 */
-  border-radius: 12px;      /* 丸み */
+  background: rgba(0, 0, 0, 0.6);
+  padding: 16px 32px;              /* ← 横方向を広げる */
+  border-radius: 12px;
   z-index: 20;
   display: none;
   font-family: 'Arial Black', Arial, sans-serif;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* 立体感 */
-  border: 1px solid rgba(255, 100, 100, 0.4);  /* ← 薄いボーダー */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255, 100, 100, 0.4);
+
+  white-space: nowrap;             /* ← 改行させない（最重要） */
+  min-width: 420px;                /* ← 横長にする */
 }
+
+
 #startBtn {
   position: fixed;
   top:70%;
@@ -654,10 +660,24 @@ if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
 
   }
   if((ballY<=40 || ballY>=H()-40) && invincible<=0){
-    invincible=60;
-    ballVY*=-1.2;
-    hitSound();
+  invincible = 60;
+  ballVY *= -1.2;
+  hitSound();
+
+  if(lives > 0){
+    lives--;
+    updateLivesDisplay();
+
+    if(lives <= 0){
+      gameOverPending = true;
+
+      // ★ 強制的に減速
+      ballVX *= 0.3;
+      ballVY *= 0.3;
+    }
   }
+}
+
   if(ballX>limit) ballX=limit;
   if(ballX<-limit) ballX=-limit;
   if(ballY<40) ballY=40;
