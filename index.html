@@ -2,12 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-  content="width=device-width,
-           initial-scale=1.0,
-           maximum-scale=1.0,
-           user-scalable=no,
-           viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tune your alpha waves for relaxation</title>
 
 <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -23,12 +18,12 @@ html, body {
 
 #screen {
   position: fixed;
-  inset: 0;          /* left/top/right/bottom をまとめて指定 */
-  width: 100%;
-  height: 100dvh;    /* ★ 最重要：動的viewport */
+  left: 0;
+  top: 0;
+  width: 100%;      /* 100vw → 100% に変更 */
+  height: 100%;     /* 100vh → 100% に変更 */
   overflow: hidden;
 }
-
 
 #hud {
   position:fixed;
@@ -798,7 +793,6 @@ animateTitle();
 
 /* ===== STARTボタン（完成版） ===== */
 startBtn.onclick = () => {
-  forceFullscreenLike(); // 擬似フルスクリーン
 
   /* --- UIを非表示／表示 --- */
   startBtn.style.display = "none";
@@ -887,11 +881,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// JavaScriptで「擬似フルスクリーン」
-function forceFullscreenLike() {
-  window.scrollTo(0, 1);
-  setTimeout(() => window.scrollTo(0, 0), 50);
-}
 
 </script>
 </body>
