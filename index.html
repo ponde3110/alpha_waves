@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tune your alpha waves for relaxation</title>
+<title>Flow with the α-waves</title>
 
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 
@@ -218,6 +218,26 @@ html, body {
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
+#startMessage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #cfe9ff;
+  font-family: Arial, sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+
+  text-shadow:
+    0 0 6px rgba(120,180,255,0.6),
+    0 0 14px rgba(120,180,255,0.4);
+
+  transition: opacity 0.8s ease;
+}
 
 </style>
 </head>
@@ -232,6 +252,7 @@ html, body {
     <div class="gameover-main">GAME OVER</div>
    <div class="gameover-sub">α-wave sync lost</div>
   </div>
+  <div id="startMessage">Flow with the α-waves</div>
   <div id="title">
     <div class="title-main">α-waves</div>
     <div class="title-sub">- sync and relax -</div>
@@ -396,6 +417,8 @@ const scoreLabel = document.getElementById("score");
 const hiLabel = document.getElementById("hiscore");
 const gameoverLabel = document.getElementById("gameover");
 const livesLabel = document.getElementById("lives");
+
+const startMessage = document.getElementById("startMessage");  // スタート時に表示 → 自動で消す
 
 const qrCode = document.getElementById("qrCode");
 const controlImg = document.getElementById("controlImg");
@@ -655,71 +678,83 @@ function updateLivesDisplay(){
 
 /* ===== ボール更新 ===== */
 function updateBall(){
-  if(ballDestroyed) return;
-  const tx = (keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
-  const ty = (keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+  /* ===== 爆発後は完全停止 ===== */
+  if (ballDestroyed) return;
+
+  /* ===== 入力処理 ===== */
+  const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+  const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
+
   const targetX = tx + tiltInputX;
   const targetY = ty + tiltInputY;
-  inputX += (targetX - inputX)*0.02;
-  inputY += (targetY - inputY)*0.02;
-  ballVX += inputX*0.10;
-  ballVY += inputY*0.10;
+
+  inputX += (targetX - inputX) * 0.02;
+  inputY += (targetY - inputY) * 0.02;
+
+  ballVX += inputX * 0.10;
+  ballVY += inputY * 0.10;
+
   ballVX *= 0.988;
   ballVY *= 0.988;
-  // 操作していない時は自動で上に流れる
-if(Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01){
-  ballVY = -0.6;   // 上へ
-  ballVX = 0.1;    // 右へ
-}
 
+  // 操作していない時は自動前進
+  if (Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01) {
+    ballVY = -0.6;
+    ballVX =  0.1;
+  }
 
+  /* ===== GAME OVER待機中：減速のみ ===== */
+  if (gameOverPending) {
+    ballVX *= 0.92;
+    ballVY *= 0.92;
+    ballX += ballVX;
+    ballY += ballVY;
+    return;
+  }
+
+  /* ===== 通常移動 ===== */
   ballX += ballVX;
   ballY += ballVY;
-  const limit = roadWidth/2 - BALL_R;
-  if((ballX>=limit || ballX<=-limit) && invincible<=0){
-    invincible=90;
-    ballVX*=-1.2;
+
+  const limit = roadWidth / 2 - BALL_R;
+  let hit = false;
+
+  // 左右
+  if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
+    hit = true;
+    ballVX *= -1.2;
+  }
+
+  // 上下
+  if ((ballY <= 20 || ballY >= H()-20) && invincible <= 0) {
+    hit = true;
+    ballVY *= -1.2;
+  }
+
+  if (hit) {
+    invincible = 60;
     hitSound();
-  
-  if(lives > 0){
-  lives--;
-  updateLivesDisplay();
 
-  if(lives <= 0){
-    gameOverPending = true;
-
-    // ★ 強制的に減速させる
-    ballVX *= 0.3;
-    ballVY *= 0.3;
-  }
-}
-
-  }
-  if((ballY<=20 || ballY>=H()-20) && invincible<=0){
-  invincible = 60;
-  ballVY *= -1.2;
-  hitSound();
-
-  if(lives > 0){
     lives--;
     updateLivesDisplay();
 
-    if(lives <= 0){
-      gameOverPending = true;
-
-      // ★ 強制的に減速
-      ballVX *= 0.3;
-      ballVY *= 0.3;
+    if (lives <= 0) {
+      gameOverPending = true; // ★ 状態だけ立てる
+      return;
     }
   }
+
+  /* ===== 位置クランプ ===== */
+  if (ballX >  limit) ballX =  limit;
+  if (ballX < -limit) ballX = -limit;
+  if (ballY < 20)     ballY = 20;
+  if (ballY > H()-20) ballY = H()-20;
+
+  if (invincible > 0) invincible--;
 }
 
-  if(ballX>limit) ballX=limit;
-  if(ballX<-limit) ballX=-limit;
-  if(ballY<20) ballY=20;
-  if(ballY>H()-20) ballY=H()-20;
-  if(invincible>0) invincible--;
-}
+
+
 
 let gameOverPending = false;
 let explodeFrame = 0;
@@ -833,6 +868,14 @@ startBtn.onclick = () => {
 
   /* --- ジャイロ有効化（スマホ） --- */
   enableDeviceOrientation();
+
+  // ===== スタートメッセージ表示 =====
+startMessage.style.opacity = "1";
+
+setTimeout(() => {
+  startMessage.style.opacity = "0";
+}, 3000); // ← 表示時間（ms）
+
 };
 
 
