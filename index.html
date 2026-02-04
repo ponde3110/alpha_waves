@@ -225,16 +225,16 @@ html, body {
   transform: translate(-50%, -50%);
   color: #cfe9ff;
   font-family: Arial, sans-serif;
-  font-size: clamp(14px, 4.2vw, 22px);   /* ★ */
-  letter-spacing: clamp(0.06em, 0.4vw, 0.1em); /* ★ */
+  font-size: 22px;
+  letter-spacing: 0.1em;
   text-align: center;
   opacity: 0;
   pointer-events: none;
   z-index: 15;
 
-  white-space: nowrap;
-  max-width: 100vw;
-  overflow: hidden;
+  white-space: nowrap;   /* ★ 必須 */
+  max-width: 100vw;      /* ★ 画面幅制限 */
+  overflow: hidden;      /* ★ 折り返し防止 */
 
   text-shadow:
     0 0 6px rgba(120,180,255,0.6),
@@ -242,7 +242,6 @@ html, body {
 
   transition: opacity 0.8s ease;
 }
-
 
 
 </style>
@@ -684,7 +683,6 @@ function updateLivesDisplay(){
 
 /* ===== ボール更新 ===== */
 function updateBall(){
-  /* ===== 爆発後は完全停止 ===== */
   if (ballDestroyed) return;
 
   /* ===== 入力処理 ===== */
@@ -703,28 +701,31 @@ function updateBall(){
   ballVX *= 0.988;
   ballVY *= 0.988;
 
-  // 操作していない時は自動前進
-  if (Math.abs(inputX) < 0.01 && Math.abs(inputY) < 0.01) {
+  const limit = roadWidth / 2 - BALL_R;
+
+  /* ===== 自動前進（★ 衝突前のみ）===== */
+  if (
+    Math.abs(inputX) < 0.01 &&
+    Math.abs(inputY) < 0.01 &&
+    ballY > 20 && ballY < H()-20 &&   // ★ 端ではかけない
+    !gameOverPending
+  ) {
     ballVY = -0.6;
     ballVX =  0.1;
   }
 
-  const limit = roadWidth / 2 - BALL_R;
-
-  /* ===== GAME OVER待機中：減速＋クランプ ===== */
+  /* ===== GAME OVER待機中 ===== */
   if (gameOverPending) {
     ballVX *= 0.92;
     ballVY *= 0.92;
-
     ballX += ballVX;
     ballY += ballVY;
 
-    // ★ ここが重要：必ず道に縛る
+    // 端に縛る
     if (ballX >  limit) ballX =  limit;
     if (ballX < -limit) ballX = -limit;
     if (ballY < 20)     ballY = 20;
     if (ballY > H()-20) ballY = H()-20;
-
     return;
   }
 
@@ -740,7 +741,7 @@ function updateBall(){
     ballVX *= -1.2;
   }
 
-  // 上下
+  // 上下（← ★ ここが復活する）
   if ((ballY <= 20 || ballY >= H()-20) && invincible <= 0) {
     hit = true;
     ballVY *= -1.2;
@@ -749,7 +750,6 @@ function updateBall(){
   if (hit) {
     invincible = 60;
     hitSound();
-
     lives--;
     updateLivesDisplay();
 
@@ -759,7 +759,7 @@ function updateBall(){
     }
   }
 
-  /* ===== 通常時クランプ ===== */
+  /* ===== クランプ ===== */
   if (ballX >  limit) ballX =  limit;
   if (ballX < -limit) ballX = -limit;
   if (ballY < 20)     ballY = 20;
@@ -767,9 +767,6 @@ function updateBall(){
 
   if (invincible > 0) invincible--;
 }
-
-
-
 
 
 let gameOverPending = false;
