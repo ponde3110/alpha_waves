@@ -286,6 +286,8 @@ const chords = [
 let chordIndex = 0, chordTimeout;
 let muted = localStorage.getItem("muted")==="true";
 
+let sideHitFlash = 0;
+
 const muteBtn = document.getElementById("muteBtn");
 muteBtn.style.display = "none";   // ← トップ画面では非表示
 
@@ -365,6 +367,30 @@ function hitSound() {
   noise.start(now);
   noise.stop(now + 0.2);
 }
+
+function bounceSound(){
+  if (muted) return;
+
+  const ctx = audioCtx;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";          // 柔らかい音
+  osc.frequency.value = 880; // 高め（軽い反射感）
+
+  gain.gain.value = 0.15;
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    ctx.currentTime + 0.12
+  );
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.12);
+}
+
 
 
 function destroySound() {
@@ -557,65 +583,92 @@ function drawRoad() {
 
 /* ===== ボール描画 ===== */
 function drawBall() {
-  if(isGameOver) return;
-  if(!gameStarted){
-    const ballYTop = H()*0.5;
+  if (isGameOver) return;
+
+  /* ===== トップ画面用 ===== */
+  if (!gameStarted) {
+    const ballYTop = H() * 0.5;
     const cx = roadCenter(ballYTop);
     const cy = ballYTop;
+
+    // 影
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.beginPath();
-    ctx.ellipse(cx, cy+10, 14,5,0,0,Math.PI*2);
+    ctx.ellipse(cx, cy + 10, 14, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    const g = ctx.createRadialGradient(cx-5, cy-5, 2, cx, cy, 18);
-    g.addColorStop(0,"#fff");
-    g.addColorStop(1,"#4fa6ff");
+
+    // ボール
+    const g = ctx.createRadialGradient(cx - 5, cy - 5, 2, cx, cy, 18);
+    g.addColorStop(0, "#fff");
+    g.addColorStop(1, "#4fa6ff");
     ctx.fillStyle = g;
+
     ctx.beginPath();
-    ctx.arc(cx, cy, BALL_R, 0, Math.PI*2);
+    ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
+
   const cx = roadCenter(ballY) + ballX;
-  if(!ballDestroyed){
+
+  /* ===== 通常プレイ中 ===== */
+  if (!ballDestroyed) {
+
+    // 影
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.beginPath();
-    ctx.ellipse(cx, ballY+10, 14,5,0,0,Math.PI*2);
+    ctx.ellipse(cx, ballY + 10, 14, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    const g = ctx.createRadialGradient(cx-5, ballY-5, 2, cx, ballY, 18);
-    g.addColorStop(0,"#fff");
-    g.addColorStop(1,"#4fa6ff");
+
+    // ★ 横ヒット時フラッシュ色
+    let g;
+    if (sideHitFlash > 0) {
+      g = ctx.createRadialGradient(cx - 5, ballY - 5, 2, cx, ballY, 18);
+      g.addColorStop(0, "#fff");
+      g.addColorStop(1, "#ff6a8a"); // ダメージ色
+      sideHitFlash--;
+    } else {
+      g = ctx.createRadialGradient(cx - 5, ballY - 5, 2, cx, ballY, 18);
+      g.addColorStop(0, "#fff");
+      g.addColorStop(1, "#4fa6ff"); // 通常色
+    }
+
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(cx, ballY, BALL_R*ballScale, 0, Math.PI*2);
+    ctx.arc(cx, ballY, BALL_R * ballScale, 0, Math.PI * 2);
     ctx.fill();
-} else {
-  explodeFrame += 0.05; // 超スロー
 
-  // 中央の光（縮小）
-  const coreR = BALL_R * (1 - explodeFrame * 0.05);
-  if (coreR > 0) {
-    const g = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
-    g.addColorStop(0, "rgba(255,255,255,0.9)");
-    g.addColorStop(1, "rgba(100,180,255,0.3)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  } else {
+    /* ===== 爆発演出 ===== */
+    explodeFrame += 0.05;
 
-  // 外側リング（拡散）
-  const ringR = BALL_R + explodeFrame * 3;
-  const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
-  if (ringAlpha > 0) {
-    ctx.strokeStyle = `rgba(180,220,255,${ringAlpha})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
-    ctx.stroke();
+    // 中央の光（縮小）
+    const coreR = BALL_R * (1 - explodeFrame * 0.05);
+    if (coreR > 0) {
+      const g = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
+      g.addColorStop(0, "rgba(255,255,255,0.9)");
+      g.addColorStop(1, "rgba(100,180,255,0.3)");
+      ctx.fillStyle = g;
+
+      ctx.beginPath();
+      ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 外側リング（拡散）
+    const ringR = BALL_R + explodeFrame * 3;
+    const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
+    if (ringAlpha > 0) {
+      ctx.strokeStyle = `rgba(180,220,255,${ringAlpha})`;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 }
 
-}
 
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
@@ -723,6 +776,7 @@ function updateBall(){
     ballY  = 20;
     ballVY = +bouncePower;   // ★ 常に下へ叩き返す
     ballVX *= 0.6;
+    bounceSound();   // ★ 追加
   }
 
   /* ===== 下端（常に強制反射・ノーダメージ）===== */
@@ -730,12 +784,15 @@ function updateBall(){
     ballY  = H() - 20;
     ballVY = -bouncePower;   // ★ 常に上へ叩き返す
     ballVX *= 0.6;
+    bounceSound();   // ★ 追加
   }
 
   /* ===== 左右側面（弱反発・ダメージ）===== */
   if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
     ballVX *= -1.1;
     invincible = 60;
+
+    sideHitFlash = 6;   // ★ 6フレームだけ光る
 
     hitSound();      // 側面ヒット演出
     lives--;
