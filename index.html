@@ -702,71 +702,60 @@ function updateBall(){
   ballVY *= 0.988;
 
   const limit = roadWidth / 2 - BALL_R;
+  const bouncePower = 5.0;   // ★ 上下反発の強さ（ここだけ調整）
 
-  /* ===== 自動前進（★ 衝突前のみ）===== */
+  /* ===== 自動前進（代入しない）===== */
   if (
     Math.abs(inputX) < 0.01 &&
     Math.abs(inputY) < 0.01 &&
-    ballY > 20 && ballY < H()-20 &&   // ★ 端ではかけない
     !gameOverPending
   ) {
-    ballVY = -0.6;
-    ballVX =  0.1;
+    ballVY += (-0.6 - ballVY) * 0.05;
+    ballVX += ( 0.1 - ballVX) * 0.05;
   }
 
-  /* ===== GAME OVER待機中 ===== */
-  if (gameOverPending) {
-    ballVX *= 0.92;
-    ballVY *= 0.92;
-    ballX += ballVX;
-    ballY += ballVY;
-
-    // 端に縛る
-    if (ballX >  limit) ballX =  limit;
-    if (ballX < -limit) ballX = -limit;
-    if (ballY < 20)     ballY = 20;
-    if (ballY > H()-20) ballY = H()-20;
-    return;
-  }
-
-  /* ===== 通常移動 ===== */
+  /* ===== 移動 ===== */
   ballX += ballVX;
   ballY += ballVY;
 
-  let hit = false;
+  /* ===== 上端（常に強制反射・ノーダメージ）===== */
+  if (ballY <= 20) {
+    ballY  = 20;
+    ballVY = +bouncePower;   // ★ 常に下へ叩き返す
+    ballVX *= 0.6;
+  }
 
-  // 左右
+  /* ===== 下端（常に強制反射・ノーダメージ）===== */
+  if (ballY >= H() - 20) {
+    ballY  = H() - 20;
+    ballVY = -bouncePower;   // ★ 常に上へ叩き返す
+    ballVX *= 0.6;
+  }
+
+  /* ===== 左右側面（弱反発・ダメージ）===== */
   if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
-    hit = true;
-    ballVX *= -1.2;
-  }
-
-  // 上下（← ★ ここが復活する）
-  if ((ballY <= 20 || ballY >= H()-20) && invincible <= 0) {
-    hit = true;
-    ballVY *= -1.2;
-  }
-
-  if (hit) {
+    ballVX *= -1.1;
     invincible = 60;
-    hitSound();
+
+    hitSound();      // 側面ヒット演出
     lives--;
     updateLivesDisplay();
 
     if (lives <= 0) {
       gameOverPending = true;
-      return;
     }
   }
 
-  /* ===== クランプ ===== */
+  /* ===== 位置クランプ（保険）===== */
   if (ballX >  limit) ballX =  limit;
   if (ballX < -limit) ballX = -limit;
   if (ballY < 20)     ballY = 20;
-  if (ballY > H()-20) ballY = H()-20;
+  if (ballY > H() - 20) ballY = H() - 20;
 
   if (invincible > 0) invincible--;
 }
+
+
 
 
 let gameOverPending = false;
