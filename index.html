@@ -243,6 +243,20 @@ html, body {
   transition: opacity 0.8s ease;
 }
 
+#lifeUpMessage {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: #ff4444;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 50;
+  transition: opacity 0.3s, transform 0.3s;
+}
 
 </style>
 </head>
@@ -262,6 +276,7 @@ html, body {
     <div class="title-main">α-waves</div>
     <div class="title-sub">- sync and relax -</div>
   </div>
+  <div id="lifeUpMessage">Life Up!</div>
   <div id="author">ponde3110&copy;</div>
   <button id="startBtn">START</button>
   <button id="muteBtn">🔊</button>
@@ -287,6 +302,9 @@ let chordIndex = 0, chordTimeout;
 let muted = localStorage.getItem("muted")==="true";
 
 let sideHitFlash = 0;
+let explodeColorPhase = 0;
+let nextLifeScore = 50000;
+
 
 const muteBtn = document.getElementById("muteBtn");
 muteBtn.style.display = "none";   // ← トップ画面では非表示
@@ -337,36 +355,52 @@ function hitSound() {
 
   const now = audioCtx.currentTime;
 
-  // ノイズ生成
-  const bufferSize = audioCtx.sampleRate * 0.15;
+  /* ===== ノイズ（衝突感） ===== */
+  const bufferSize = audioCtx.sampleRate * 0.12;
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
 
   for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
   }
 
   const noise = audioCtx.createBufferSource();
   noise.buffer = buffer;
 
-  // フィルター（潰れた質感）
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(700, now);
-  filter.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = "highpass";      // ★ 低音カット
+  noiseFilter.frequency.value = 600;
 
-  // 音量エンベロープ
-  const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0.4, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.35, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
-  noise.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
+  noise.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(audioCtx.destination);
 
+  /* ===== ピッという中高音 ===== */
+  const osc = audioCtx.createOscillator();
+  const oscGain = audioCtx.createGain();
+
+  osc.type = "square";               // ★ 目立つ
+  osc.frequency.setValueAtTime(1600, now);
+  osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+
+  oscGain.gain.setValueAtTime(0.25, now);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+  osc.connect(oscGain);
+  oscGain.connect(audioCtx.destination);
+
+  /* ===== 再生 ===== */
   noise.start(now);
   noise.stop(now + 0.2);
+
+  osc.start(now);
+  osc.stop(now + 0.12);
 }
+
 
 function bounceSound(){
   if (muted) return;
@@ -638,41 +672,53 @@ function drawBall() {
     ctx.arc(cx, ballY, BALL_R * ballScale, 0, Math.PI * 2);
     ctx.fill();
 
-  } else {
-    /* ===== 爆発演出 ===== */
-    explodeFrame += 0.05;
+} else {
+  /* ===== 爆発演出（色変化付き） ===== */
+  explodeFrame += 0.05;
+  explodeColorPhase += 0.04;
 
-    // 中央の光（縮小）
-    const coreR = BALL_R * (1 - explodeFrame * 0.05);
-    if (coreR > 0) {
-      const g = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
-      g.addColorStop(0, "rgba(255,255,255,0.9)");
-      g.addColorStop(1, "rgba(100,180,255,0.3)");
-      ctx.fillStyle = g;
+  const cx = roadCenter(ballY) + ballX;
 
-      ctx.beginPath();
-      ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  // 色補間（赤 → ピンク → 白）
+  const r = 255;
+  const g = Math.floor(80 + 120 * explodeColorPhase);
+  const b = Math.floor(80 + 180 * explodeColorPhase);
 
-    // 外側リング（拡散）
-    const ringR = BALL_R + explodeFrame * 3;
-    const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
-    if (ringAlpha > 0) {
-      ctx.strokeStyle = `rgba(180,220,255,${ringAlpha})`;
-      ctx.lineWidth = 2;
+  /* --- 中央コア --- */
+  const coreR = BALL_R * (1 - explodeFrame * 0.05);
+  if (coreR > 0) {
+    const gCore = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
+    gCore.addColorStop(0, `rgba(${r},${g},${b},0.95)`);
+    gCore.addColorStop(1, `rgba(${r},${g},${b},0.3)`);
+    ctx.fillStyle = gCore;
 
-      ctx.beginPath();
-      ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
+    ctx.fill();
   }
+
+  /* --- 拡散リング --- */
+  const ringR = BALL_R + explodeFrame * 3;
+  const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
+  if (ringAlpha > 0) {
+    ctx.strokeStyle = `rgba(${r},${g},${b},${ringAlpha})`;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 }
 
 
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
   if (isGameOver) return;
+
+  lives = 0;
+  updateLivesDisplay();
 
   clearTimeout(chordTimeout);
   isGameOver = true;
@@ -715,7 +761,7 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => keys[e.code] = false);
 
 /* ===== ライフ表示 ===== */
-const maxLives = 3;
+const maxLives = 5;
 function updateLivesDisplay(){
   // トップ画面では表示しない
   if (!gameStarted) {
@@ -772,36 +818,55 @@ function updateBall(){
   ballY += ballVY;
 
   /* ===== 上端（常に強制反射・ノーダメージ）===== */
-  if (ballY <= 20) {
-    ballY  = 20;
-    ballVY = +bouncePower;   // ★ 常に下へ叩き返す
-    ballVX *= 0.6;
-    bounceSound();   // ★ 追加
+if (ballY <= 20) {
+  ballY = 20;
+  ballVY = +bouncePower;
+
+  // ★ 必ず斜めにする
+  if (Math.abs(ballVX) < 0.3) {
+    ballVX = (Math.random() < 0.5 ? -1 : 1) * 0.7;
+  } else {
+    ballVX *= 1.15;
   }
+
+  bounceSound();
+}
+
 
   /* ===== 下端（常に強制反射・ノーダメージ）===== */
-  if (ballY >= H() - 20) {
-    ballY  = H() - 20;
-    ballVY = -bouncePower;   // ★ 常に上へ叩き返す
-    ballVX *= 0.6;
-    bounceSound();   // ★ 追加
+if (ballY >= H() - 20) {
+  ballY = H() - 20;
+  ballVY = -bouncePower;
+
+  // ★ 必ず斜めにする
+  if (Math.abs(ballVX) < 0.3) {
+    ballVX = (Math.random() < 0.5 ? -1 : 1) * 0.7;
+  } else {
+    ballVX *= 1.15;
   }
+
+  bounceSound();
+}
+
 
   /* ===== 左右側面（弱反発・ダメージ）===== */
-  if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
-    ballVX *= -1.1;
-    invincible = 60;
+if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
+  ballVX *= -1.1;
+  invincible = 60;
 
-    sideHitFlash = 6;   // ★ 6フレームだけ光る
+  sideHitFlash = 6;
+  hitSound();
 
-    hitSound();      // 側面ヒット演出
-    lives--;
-    updateLivesDisplay();
+  // ===== ダメージ処理 =====
+  lives--;
+  lives = Math.max(lives, 0);   // ★ 下限保証
+  updateLivesDisplay();
 
-    if (lives <= 0) {
-      gameOverPending = true;
-    }
+  if (lives === 0) {
+    gameOverPending = true;
   }
+}
+
 
   /* ===== 位置クランプ（保険）===== */
   if (ballX >  limit) ballX =  limit;
@@ -848,13 +913,36 @@ function loop(){
 
   drawBall();
   scoreLabel.textContent = "SCORE " + Math.floor(score);
-  updateLivesDisplay();
+
+// ===== スコアによるライフ回復（修正版・確定）=====
+if (score >= nextLifeScore) {
+
+  if (lives < maxLives) {
+    lives++;
+
+    lifeUpSound();
+
+    if (lives === maxLives) {
+      lifeUpMessage.style.color = "#ffd700"; // gold
+      showLifeUpMessage("Max Life!");   // ★ 満タン表示
+    } else {
+      lifeUpMessage.style.color = "#ff4444"; // heart color
+      showLifeUpMessage("Life Up!");
+    }
+
+    updateLivesDisplay();
+  }
+
+  nextLifeScore += 50000;
+}
+
 
   if(gameOverPending && !isGameOver){
     if(Math.abs(ballVX) < 1 && Math.abs(ballVY) < 1){
       ballDestroyed = true;
       destroySound();
       explodeFrame = 0;   // ← 追加
+      explodeColorPhase = 0;   // ★ 追加
       gameOverPending = false;
       setTimeout(()=>{
         updateGameOver();
@@ -909,6 +997,7 @@ startBtn.onclick = () => {
 
   lives = 3;
   score = 0;
+  nextLifeScore = 50000;
 
   ballX = 0;
   ballY = H() * 0.5;
@@ -982,6 +1071,52 @@ document.addEventListener('visibilitychange', () => {
     wakeLock = null;
   }
 });
+
+// ===== ライフ回復メッセージ =====
+const lifeUpMessage = document.getElementById("lifeUpMessage");
+
+function showLifeUpMessage(text = "Life Up!") {
+  lifeUpMessage.textContent = text;
+  lifeUpMessage.style.opacity = 1;
+
+  setTimeout(() => {
+    lifeUpMessage.style.opacity = 0;
+  }, 800);
+}
+
+function lifeUpSound() {
+  if (muted) return;       // ★ ミュート対応
+  if (!audioCtx) return;
+
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  // 音色
+  osc1.type = "sine";
+  osc2.type = "triangle";
+
+  // 周波数（チャリン感）
+  osc1.frequency.setValueAtTime(1200, audioCtx.currentTime);
+  osc2.frequency.setValueAtTime(1800, audioCtx.currentTime);
+
+  gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    audioCtx.currentTime + 0.35
+  );
+
+  osc1.connect(gain);
+  osc2.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc1.start();
+  osc2.start();
+
+  osc1.stop(audioCtx.currentTime + 0.35);
+  osc2.stop(audioCtx.currentTime + 0.35);
+}
+
 
 
 </script>
