@@ -72,10 +72,15 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: #ff4444;
+  color: #ff8c1a;
   font-size: 32px;
   font-weight: bold;
-  background: rgba(0, 0, 0, 0.6);
+  background: linear-gradient(
+  to bottom,
+  rgba(255,160,60,0.35),
+  rgba(120,40,0,0.5)
+);
+
   padding: 16px 32px;              /* ← 横方向を広げる */
   border-radius: 12px;
   z-index: 20;
@@ -97,8 +102,16 @@ html, body {
   font-size:24px;
   font-weight: bold;
   border-radius:12px;
-  background: rgba(0, 0, 0, 0.6);
-  color:#ff4444;
+  background: linear-gradient(
+  to bottom,
+  rgba(255,160,60,0.35),
+  rgba(120,40,0,0.5)
+);
+box-shadow:
+  0 0 12px rgba(255,140,30,0.6),
+  inset 0 0 6px rgba(255,200,120,0.4);
+
+  color:#ff8c1a;
   cursor:pointer;
   z-index:20;
 }
@@ -122,7 +135,7 @@ html, body {
   top: 25%;
   left: 50%;
   transform: translate(-50%, -50%) scale(1);
-  color: #ff4444;
+  color: #ff8c1a;
   font-family: 'Arial Black', Arial, sans-serif;
   font-size: 48px;
   text-align: center;
@@ -147,7 +160,7 @@ html, body {
   font-size:60px;
   letter-spacing:3px;
 
-  color:#ff4444;     /* 本体の赤 */
+  color:#ff8c1a;     /* 本体の赤 */
 
   white-space: nowrap;
 
@@ -249,7 +262,7 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 24px;
-  color: #ff4444;
+  color: #ff8c1a;
   font-weight: bold;
   opacity: 0;
   pointer-events: none;
@@ -257,6 +270,14 @@ html, body {
   z-index: 50;
   transition: opacity 0.3s, transform 0.3s;
 }
+
+.heart {
+  color: #cfe9ff;
+  font-size: 28px;
+  margin-right: 6px;
+}
+
+
 
 </style>
 </head>
@@ -536,8 +557,20 @@ for (let i=0; i<120; i++) {
 }
 
 function drawStars() {
-  ctx.fillStyle = "black";
+
+  // ===== 紫がはっきり見える宇宙背景 =====
+  const bg = ctx.createRadialGradient(
+    W()/2, H()*0.3, 0,
+    W()/2, H()*0.5, H()
+  );
+
+  bg.addColorStop(0, "#2b0040");   // 中央：紫
+  bg.addColorStop(0.4, "#140020"); // 周辺：暗紫
+  bg.addColorStop(1, "#020008");   // 外側：ほぼ黒
+
+  ctx.fillStyle = bg;
   ctx.fillRect(0,0,W(),H());
+
   stars.forEach(s => {
     s.y += 0.12 * s.d;
     if (s.y > H()) {
@@ -551,6 +584,8 @@ function drawStars() {
   });
 }
 
+
+
 /* ===== 道 ===== */
 function roadCenter(y) {
   return W()/2 + Math.sin((y+offset)*0.01)*80 + Math.sin((y+offset)*0.03)*30;
@@ -558,51 +593,106 @@ function roadCenter(y) {
 
 
 function drawRoad() {
+
   const leftEdge = [];
   const rightEdge = [];
 
-  // 左右端の座標を計算（滑らかにするため細かめに）
-  for (let y = 0; y <= H(); y += 2) {
-    const cx = roadCenter(y);
-    leftEdge.push({ x: cx - roadWidth / 2, y });
-    rightEdge.push({ x: cx + roadWidth / 2, y });
-  }
+ for (let y = 0; y <= H(); y += 2) {
 
-  // 道路本体をスライスごとに塗りつぶす
+  const cx = roadCenter(y);
+
+  // 0（奥）〜1（手前）
+  const t = y / H();
+
+  // 遠近係数（奥で細く）
+  const perspective = 0.2 + t * 1.0;
+
+
+  const w = roadWidth * perspective;
+
+  leftEdge.push({ x: cx - w / 2, y });
+  rightEdge.push({ x: cx + w / 2, y });
+}
+
+
+  /* ===== 路面 ===== */
+
   for (let i = 0; i < leftEdge.length; i++) {
+
     const y = leftEdge[i].y;
-    const leftX = leftEdge[i].x;
-    const rightX = rightEdge[i].x;
+    const lx = leftEdge[i].x;
+    const rx = rightEdge[i].x;
 
-    // 道路幅に沿ったグラデーション
-    const grad = ctx.createLinearGradient(leftX, 0, rightX, 0);
-    grad.addColorStop(0, "#5a7fbf");    // 左端：薄め
-    grad.addColorStop(0.25, "#1e3b66"); // 左中間：少し暗め
-    grad.addColorStop(0.5, "#102040");  // 中央：暗め
-    grad.addColorStop(0.75, "#1e3b66"); // 右中間：少し暗め
-    grad.addColorStop(1, "#5a7fbf");    // 右端：薄め
+    const roadGrad = ctx.createLinearGradient(lx, 0, rx, 0);
 
-    ctx.fillStyle = grad;
-    ctx.fillRect(leftX, y, rightX - leftX, 2); // 1スライスずつ描画
+    // ダークエメラルド + 中央沈み
+    roadGrad.addColorStop(0, "#2a7a6d");
+roadGrad.addColorStop(0.35, "#145046");
+roadGrad.addColorStop(0.5, "#0a2a26");
+roadGrad.addColorStop(0.65, "#145046");
+roadGrad.addColorStop(1, "#2a7a6d");
+
+
+    ctx.fillStyle = roadGrad;
+    ctx.fillRect(lx, y, rx - lx, 2);
+
+    // 縦方向の遠近グラデーション（奥暗く・手前明るく）
+const depthGrad = ctx.createLinearGradient(0, 0, 0, H());
+
+// 奥：しっかり沈む
+depthGrad.addColorStop(0, "rgba(0,0,0,0.65)");
+
+// 中間
+depthGrad.addColorStop(0.45, "rgba(0,0,0,0.25)");
+
+// 手前：はっきり反射
+depthGrad.addColorStop(1, "rgba(255,255,255,0.12)");
+
+
+ctx.fillStyle = depthGrad;
+ctx.fillRect(lx, y, rx - lx, 2);
+
   }
 
-  // 道路枠線を描く
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 4;
+  /* ===== 縁の立体 ===== */
+
+  // 外側シャドウ
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.beginPath();
   for (let i = 0; i < leftEdge.length; i++) {
-    if (i === 0) ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
-    else ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+    if (i === 0) ctx.moveTo(leftEdge[i].x - 6, leftEdge[i].y);
+    else ctx.lineTo(leftEdge[i].x - 6, leftEdge[i].y);
   }
   for (let i = rightEdge.length - 1; i >= 0; i--) {
-    ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+    ctx.lineTo(rightEdge[i].x + 6, rightEdge[i].y);
   }
-  ctx.closePath();
   ctx.stroke();
 
-  // センター点線を道路曲線に沿って描く
-  ctx.strokeStyle = "#6fa8ff"; // ←カッコいい青
-  ctx.setLineDash([20, 20]);
+  // 内側ハイライト（唯一の装飾）
+  const edgeGrad = ctx.createLinearGradient(0, 0, 0, H());
+  edgeGrad.addColorStop(0, "rgba(40,120,100,0.35)");
+  edgeGrad.addColorStop(1, "rgba(120,200,160,0.8)");
+
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = edgeGrad;
+
+  ctx.beginPath();
+  for (let i = 0; i < leftEdge.length; i++) {
+    if (i === 0) ctx.moveTo(leftEdge[i].x + 2, leftEdge[i].y);
+    else ctx.lineTo(leftEdge[i].x + 2, leftEdge[i].y);
+  }
+  for (let i = rightEdge.length - 1; i >= 0; i--) {
+    ctx.lineTo(rightEdge[i].x - 2, rightEdge[i].y);
+  }
+  ctx.stroke();
+
+  /* ===== センターライン ===== */
+
+  ctx.strokeStyle = "rgba(140,220,180,0.35)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([24, 24]);
+
   ctx.beginPath();
   for (let i = 0; i < leftEdge.length; i++) {
     const cx = (leftEdge[i].x + rightEdge[i].x) / 2;
@@ -612,6 +702,7 @@ function drawRoad() {
   ctx.stroke();
   ctx.setLineDash([]);
 }
+
 
 
 
@@ -633,8 +724,10 @@ function drawBall() {
 
     // ボール
     const g = ctx.createRadialGradient(cx - 5, cy - 5, 2, cx, cy, 18);
-    g.addColorStop(0, "#fff");
-    g.addColorStop(1, "#4fa6ff");
+g.addColorStop(0, "#fff2dd");   // 中央：暖かい白
+g.addColorStop(1, "#ff8c1a");  // 外側：アンバーオレンジ
+
+
     ctx.fillStyle = g;
 
     ctx.beginPath();
@@ -656,20 +749,34 @@ function drawBall() {
 
     // ★ 横ヒット時フラッシュ色
     let g;
-    if (sideHitFlash > 0) {
+if (sideHitFlash > 0) {
+  g = ctx.createRadialGradient(cx - 6, ballY - 6, 2, cx, ballY, 20);
+
+  // 中央：白熱
+  g.addColorStop(0, "#ffffff");
+
+  // 中間：薄いアンバー
+  g.addColorStop(0.6, "#ffd8a0");
+
+  // 外周：元のオレンジ
+  g.addColorStop(1, "#ff8c1a");
+
+  sideHitFlash--;
+} else {
       g = ctx.createRadialGradient(cx - 5, ballY - 5, 2, cx, ballY, 18);
-      g.addColorStop(0, "#fff");
-      g.addColorStop(1, "#ff6a8a"); // ダメージ色
-      sideHitFlash--;
-    } else {
-      g = ctx.createRadialGradient(cx - 5, ballY - 5, 2, cx, ballY, 18);
-      g.addColorStop(0, "#fff");
-      g.addColorStop(1, "#4fa6ff"); // 通常色
+      g.addColorStop(0, "#fff2dd");
+g.addColorStop(1, "#ff8c1a");
+
     }
 
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(cx, ballY, BALL_R * ballScale, 0, Math.PI * 2);
+    const t = ballY / H();
+const perspective = 0.2 + t * 1.0;
+const r = BALL_R * perspective * ballScale;
+
+ctx.arc(cx, ballY, r, 0, Math.PI * 2);
+
     ctx.fill();
 
 } else {
@@ -679,10 +786,11 @@ function drawBall() {
 
   const cx = roadCenter(ballY) + ballX;
 
-  // 色補間（赤 → ピンク → 白）
-  const r = 255;
-  const g = Math.floor(80 + 120 * explodeColorPhase);
-  const b = Math.floor(80 + 180 * explodeColorPhase);
+  // オレンジ → アンバー → 白
+const r = 255;
+const g = Math.floor(140 + 80 * explodeColorPhase);
+const b = Math.floor(40 + 40 * explodeColorPhase);
+
 
   /* --- 中央コア --- */
   const coreR = BALL_R * (1 - explodeFrame * 0.05);
@@ -770,13 +878,14 @@ function updateLivesDisplay(){
   }
 
   livesLabel.innerHTML = "";
-  for(let i = 0; i < lives; i++){
-    const heart = document.createElement("span");
-    heart.textContent = "❤️";
-    heart.style.fontSize = "24px";
-    heart.style.marginRight = "4px";
-    livesLabel.appendChild(heart);
-  }
+
+for (let i = 0; i < lives; i++) {
+  const heart = document.createElement("span");
+  heart.className = "heart";
+  heart.textContent = "♥";
+  livesLabel.appendChild(heart);
+}
+
 }
 
 
@@ -800,7 +909,10 @@ function updateBall(){
   ballVX *= 0.988;
   ballVY *= 0.988;
 
-  const limit = roadWidth / 2 - BALL_R;
+  const t = ballY / H();
+const perspective = 0.2 + t * 1.0;
+const limit = (roadWidth * perspective) / 2 - BALL_R;
+
   const bouncePower = 5.0;   // ★ 上下反発の強さ（ここだけ調整）
 
   /* ===== 自動前進（代入しない）===== */
@@ -894,17 +1006,25 @@ function loop(){
   drawRoad();
 
   // ===== スクロール速度制御（完全・停止しない）=====
-  const baseSpeed = 0.2;
 
-  if (gameStarted) {
-    // ゲーム中 ＆ GAME OVER表示中
-    const forward = (H() - ballY) * 0.002;
-    offset += baseSpeed + forward;
+  const baseSpeed = 0.12;   // 最低速度を下げる
 
-    if (!isGameOver) {
-      score += (0.4 + forward) * 10;
-    }
-  } else {
+if (gameStarted) {
+
+  // 上に行っても暴走しない forward
+  let forward = (ballY / H()) * 0.9;
+
+
+  // 最大速度を制限
+  forward = Math.min(forward, 0.9);
+
+  offset += baseSpeed + forward;
+
+  if (!isGameOver) {
+    score += (0.25 + forward) * 10;
+  }
+}
+ else {
     // 本当のトップ画面
     offset += baseSpeed;
   }
@@ -926,7 +1046,7 @@ if (score >= nextLifeScore) {
       lifeUpMessage.style.color = "#ffd700"; // gold
       showLifeUpMessage("Max Life!");   // ★ 満タン表示
     } else {
-      lifeUpMessage.style.color = "#ff4444"; // heart color
+      lifeUpMessage.style.color = "#ff8c1a"; // heart color
       showLifeUpMessage("Life Up!");
     }
 
