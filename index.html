@@ -900,14 +900,19 @@ function updateBall(){
   const targetX = tx + tiltInputX;
   const targetY = ty + tiltInputY;
 
-  inputX += (targetX - inputX) * 0.02;
-  inputY += (targetY - inputY) * 0.02;
+  // 入力追従
+inputX += (targetX - inputX) * 0.01;
+inputY += (targetY - inputY) * 0.01;
 
-  ballVX += inputX * 0.10;
-  ballVY += inputY * 0.10;
+// 加速
+ballVX += inputX * 0.06;
+ballVY += inputY * 0.06;
 
-  ballVX *= 0.988;
-  ballVY *= 0.988;
+// 摩擦
+ballVX *= 0.96;
+ballVY *= 0.96;
+
+
 
   const t = ballY / H();
 const perspective = 0.2 + t * 1.0;
