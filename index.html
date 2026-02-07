@@ -326,6 +326,9 @@ let sideHitFlash = 0;
 let explodeColorPhase = 0;
 let nextLifeScore = 50000;
 
+let sideHitFlashLeft = 0;
+let sideHitFlashRight = 0;
+
 
 const muteBtn = document.getElementById("muteBtn");
 muteBtn.style.display = "none";   // ← トップ画面では非表示
@@ -658,27 +661,36 @@ function drawRoad() {
     ctx.fillRect(lx, y, rx - lx, 2);
   }
 
-  /* ===== 道の縁（奥行き反映） ===== */
-  ctx.lineWidth = 6;
-  for (let i = 0; i < leftEdge.length; i++) {
-    const t = leftEdge[i].y / H();
-    const perspective = 0.1 + t * 1.0;
-    const alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
+// 道の縁（奥行き反映）
+ctx.lineWidth = 6;
+for (let i = 0; i < leftEdge.length; i++) {
+  const t = leftEdge[i].y / H();
+  const perspective = 0.1 + t * 1.0;
+  let alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
 
-    // 左縁
-    ctx.strokeStyle = `rgba(40,120,100,${alpha})`;
-    ctx.beginPath();
-    ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
-    if (i < leftEdge.length - 1) ctx.lineTo(leftEdge[i + 1].x, leftEdge[i + 1].y);
-    ctx.stroke();
+  // 左縁
+  ctx.strokeStyle = sideHitFlashLeft > 0
+    ? `rgba(255,255,150,${alpha})`  // 光る色
+    : `rgba(40,120,100,${alpha})`;
+  ctx.beginPath();
+  ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
+  if (i < leftEdge.length - 1) ctx.lineTo(leftEdge[i + 1].x, leftEdge[i + 1].y);
+  ctx.stroke();
 
-    // 右縁
-    ctx.strokeStyle = `rgba(40,120,100,${alpha})`;
-    ctx.beginPath();
-    ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
-    if (i < rightEdge.length - 1) ctx.lineTo(rightEdge[i + 1].x, rightEdge[i + 1].y);
-    ctx.stroke();
-  }
+  // 右縁
+  ctx.strokeStyle = sideHitFlashRight > 0
+    ? `rgba(255,255,150,${alpha})`  // 光る色
+    : `rgba(40,120,100,${alpha})`;
+  ctx.beginPath();
+  ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
+  if (i < rightEdge.length - 1) ctx.lineTo(rightEdge[i + 1].x, rightEdge[i + 1].y);
+  ctx.stroke();
+}
+
+// フラッシュを減算
+if (sideHitFlashLeft > 0) sideHitFlashLeft--;
+if (sideHitFlashRight > 0) sideHitFlashRight--;
+
 
   /* ===== センターライン ===== */
   ctx.strokeStyle = "rgba(140,220,180,0.35)";
@@ -883,12 +895,23 @@ for (let i = 0; i < lives; i++) {
 function updateBall(){
   if (ballDestroyed) return;
 
-  /* ===== 入力処理 ===== */
-  const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
-  const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
+/* ===== 入力処理 ===== */
+const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
 
-  const targetX = tx + tiltInputX;
-  const targetY = ty + tiltInputY * 0.4;   // ★ 上下入力を40％に
+// スマホ判定
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+// 上下入力補正
+let tiltYCorrected = tiltInputY;
+if (isMobile) {
+    const neutralAngle = 30;       // スマホ傾きニュートラル角度
+    tiltYCorrected -= neutralAngle * 0.3; // 30%をニュートラルに
+}
+
+const targetX = tx + tiltInputX;
+const targetY = ty + tiltYCorrected * 0.2;   // 上下入力を20％に
+
 
   // 入力追従
 inputX += (targetX - inputX) * 0.02;
@@ -899,8 +922,8 @@ ballVX += inputX * 0.06;
 ballVY += inputY * 0.06;
 
 // 摩擦（1に近い程摩擦が少ない）
-ballVX *= 0.98;
-ballVY *= 0.98;
+ballVX *= 0.988;
+ballVY *= 0.988;
 
 
 
@@ -960,23 +983,37 @@ if (ballY >= H() - 20) {
 }
 
 
-  /* ===== 左右側面（弱反発・ダメージ）===== */
-if ((ballX >= limit || ballX <= -limit) && invincible <= 0) {
+/* ===== 左右側面（弱反発・ダメージ）===== */
+if (ballX >= limit && invincible <= 0) {
   ballVX *= -1.1;
   invincible = 60;
 
-  sideHitFlash = 6;
+  sideHitFlashRight = 6;  // 右側道の光
+  sideHitFlash = 6;       // ボールフラッシュ
   hitSound();
 
-  // ===== ダメージ処理 =====
   lives--;
-  lives = Math.max(lives, 0);   // ★ 下限保証
+  lives = Math.max(lives, 0);
   updateLivesDisplay();
 
-  if (lives === 0) {
-    gameOverPending = true;
-  }
+  if (lives === 0) gameOverPending = true;
 }
+
+if (ballX <= -limit && invincible <= 0) {
+  ballVX *= -1.1;
+  invincible = 60;
+
+  sideHitFlashLeft = 6;   // 左側道の光
+  sideHitFlash = 6;       // ボールフラッシュ
+  hitSound();
+
+  lives--;
+  lives = Math.max(lives, 0);
+  updateLivesDisplay();
+
+  if (lives === 0) gameOverPending = true;
+}
+
 
 
   /* ===== 位置クランプ（保険）===== */
