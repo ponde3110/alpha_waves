@@ -559,26 +559,31 @@ function handleOrientation(e) {
 
 function enableDeviceOrientation() {
 
-  // iOS用（Safari）
+  // PC除外
+  if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    console.log("PC detected: gyro disabled");
+    return;
+  }
+
+  // iOS
   if (
     typeof DeviceOrientationEvent !== "undefined" &&
     typeof DeviceOrientationEvent.requestPermission === "function"
   ) {
     DeviceOrientationEvent.requestPermission()
-      .then(permissionState => {
-        if (permissionState === "granted") {
+      .then(state => {
+        if (state === "granted") {
           window.addEventListener("deviceorientation", handleOrientation);
-          console.log("gyro enabled (iOS)");
         }
       })
       .catch(console.error);
 
   } else {
-    // Android / その他
+    // Android
     window.addEventListener("deviceorientation", handleOrientation);
-    console.log("gyro enabled");
   }
 }
+
 
 
 
