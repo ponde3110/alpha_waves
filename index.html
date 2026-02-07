@@ -173,7 +173,7 @@ box-shadow:
 }
 
 .title-sub{
-  font-size:28px;
+  font-size:26px;
   letter-spacing:2px;
   margin-top:6px;
   color:#cfe9ff;
@@ -621,7 +621,7 @@ function spawnHole() {
   holes.push({
     y: -40,
     xOffset: (Math.random() - 0.5) * roadWidth * 0.6,
-    r: 14 + Math.random() * 8,
+    r: 6 + Math.random() * (4 + score / 20000),
     h: 12 + Math.random() * 10   // 高さ（立体感用）
   });
 }
@@ -989,7 +989,7 @@ function updateBall(){
   ballY += ballVY;
 
   /* ===== 上端 ===== */
-  const upperLimit = H() * 0.3;
+  const upperLimit = H() * 0.2;
   if (ballY <= upperLimit) {
     ballY = upperLimit;
     ballVY = +bouncePower;
@@ -1125,7 +1125,7 @@ if (gameStarted) {
  // テルを発生＆流す処理
 const tellLevel = Math.min(5, 1 + score / 100000); // 20000なら地獄
 
-if (gameStarted && Math.random() < 0.0035 * tellLevel) {
+if (gameStarted && Math.random() < 0.0010 * tellLevel) {
   spawnHole();
 }
 
