@@ -542,6 +542,8 @@ function handleOrientation(e) {
   let x = e.gamma || 0; // 左右
   let y = e.beta  || 0; // 上下
 
+    y -= 30;   // ★ 上に30度傾けた状態をニュートラルにする
+
   const angle = screen.orientation?.angle || 0;
 
   switch (angle) {
@@ -1235,7 +1237,7 @@ if (
 if (gameStarted) {
 
   // ライフが満タン5なら新しいはたピーは生成しない
-  if (lives < 5 && Math.random() < 0.0003) {
+  if (lives < 5 && Math.random() < 0.0001) {
     spawnHatapie();
   }
 
