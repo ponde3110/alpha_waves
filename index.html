@@ -524,8 +524,11 @@ let ballX=0, ballY=H()*0.5, ballVX=0, ballVY=0, inputX=0, inputY=0;
 const BALL_R = 14;
 const keys = {};
 
-// ===== スマホ傾き操作 =====
 let tiltInputX = 0, tiltInputY = 0;
+
+// 上を30°持ち上げた角度をニュートラルにする
+const TILT_NEUTRAL_DEG = 30;  
+const TILT_SENSITIVITY = 0.04;
 
 function enableDeviceOrientation() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -533,35 +536,37 @@ function enableDeviceOrientation() {
     DeviceOrientationEvent.requestPermission().then(res=>{
       if(res==='granted') window.addEventListener('deviceorientation', handleOrientation);
     }).catch(console.error);
-  } else {
+  } else if ('DeviceOrientationEvent' in window) {
     window.addEventListener('deviceorientation', handleOrientation);
   }
 }
 
+// 上を30°持ち上げた角度をニュートラルにする（スマホのみ）
 function handleOrientation(e) {
-  let x = e.gamma || 0; // 左右
-  let y = e.beta  || 0; // 上下
+  if (!e) return;
+
+  let gamma = e.gamma || 0; // 左右
+  let beta  = e.beta  || 0; // 前後
 
   const angle = screen.orientation?.angle || 0;
 
   switch (angle) {
-    case 0: // portrait
-      break;
-    case 90: // landscape right
-      [x, y] = [y, -x];
-      break;
-    case 180: // upside-down
-      x = -x;
-      y = -y;
-      break;
-    case 270: // landscape left
-      [x, y] = [-y, x];
-      break;
+    case 0: break;                 // portrait
+    case 90: [gamma, beta] = [beta, -gamma]; break;  // landscape right
+    case 180: gamma = -gamma; beta = -beta; break;    // upside-down
+    case 270: [gamma, beta] = [-beta, gamma]; break; // landscape left
   }
 
-  const sensitivity = 0.04;
-  tiltInputX = x * sensitivity;
-  tiltInputY = y * sensitivity;
+  // スマホ判定（傾きセンサーがある場合のみ）
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    tiltInputX = gamma * TILT_SENSITIVITY;
+    tiltInputY = (beta - TILT_NEUTRAL_DEG) * TILT_SENSITIVITY;
+  } else {
+    tiltInputX = 0;
+    tiltInputY = 0;
+  }
 }
 
 
