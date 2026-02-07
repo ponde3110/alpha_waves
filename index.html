@@ -536,12 +536,31 @@ function enableDeviceOrientation() {
 }
 
 function handleOrientation(e) {
-  const gamma = e.gamma || 0;
-  const beta = e.beta || 0;
+  let gamma = e.gamma || 0;
+  let beta  = e.beta  || 0;
+
+  // 端末の向きに応じて反転・入れ替え
+  const orientation = window.orientation || 0;
+  switch (orientation) {
+    case 90:   // landscape右
+      [gamma, beta] = [-beta, gamma];
+      break;
+    case -90:  // landscape左
+      [gamma, beta] = [beta, -gamma];
+      break;
+    case 180:  // upside-down portrait
+      gamma = -gamma;
+      beta  = -beta;
+      break;
+    default:   // portrait
+      break;
+  }
+
   const sensitivity = 0.05;
   tiltInputX = gamma * sensitivity;
   tiltInputY = beta * sensitivity;
 }
+
 
 /* ===== 星 ===== */
 const stars = [];
@@ -599,44 +618,27 @@ function roadCenter(y) {
 
 
 function drawRoad() {
-
   const leftEdge = [];
   const rightEdge = [];
 
+  // 道の中心と幅
   for (let y = 0; y <= H(); y += 2) {
-
     const cx = roadCenter(y);
-
-    // 0（奥）〜1（手前）
     const t = y / H();
-
-    // 遠近係数（奥で細く）
     const perspective = 0.1 + t * 1.0;
+    const w = roadWidth * perspective;
 
-    // 道幅を上端（0〜10％）で徐々にゼロに
-    const fadeStart = H() * 0.1; // 上端10％
-    let roadW = roadWidth * perspective;
-    if (y < fadeStart) {
-      roadW *= y / fadeStart; // 上端で0
-    }
-
-    leftEdge.push({ x: cx - roadW / 2, y });
-    rightEdge.push({ x: cx + roadW / 2, y });
+    leftEdge.push({ x: cx - w / 2, y });
+    rightEdge.push({ x: cx + w / 2, y });
   }
 
   /* ===== 路面 ===== */
   for (let i = 0; i < leftEdge.length; i++) {
-
     const y = leftEdge[i].y;
     const lx = leftEdge[i].x;
     const rx = rightEdge[i].x;
 
-    // 道幅がほぼ0なら描画スキップ
-    if (rx - lx < 1) continue;
-
     const roadGrad = ctx.createLinearGradient(lx, 0, rx, 0);
-
-    // ダークエメラルド + 中央沈み
     roadGrad.addColorStop(0, "#2a7a6d");
     roadGrad.addColorStop(0.35, "#145046");
     roadGrad.addColorStop(0.5, "#0a2a26");
@@ -646,21 +648,41 @@ function drawRoad() {
     ctx.fillStyle = roadGrad;
     ctx.fillRect(lx, y, rx - lx, 2);
 
-    // 縦方向の遠近グラデーション（奥暗く・手前明るく）
+    // 遠近グラデーション（縦方向）
     const depthGrad = ctx.createLinearGradient(0, 0, 0, H());
-    depthGrad.addColorStop(0, "rgba(0,0,0,0.65)");    // 奥
-    depthGrad.addColorStop(0.45, "rgba(0,0,0,0.25)");  // 中間
-    depthGrad.addColorStop(1, "rgba(255,255,255,0.12)"); // 手前
-
+    depthGrad.addColorStop(0, "rgba(0,0,0,0.65)");
+    depthGrad.addColorStop(0.45, "rgba(0,0,0,0.25)");
+    depthGrad.addColorStop(1, "rgba(255,255,255,0.12)");
     ctx.fillStyle = depthGrad;
     ctx.fillRect(lx, y, rx - lx, 2);
+  }
+
+  /* ===== 道の縁（奥行き反映） ===== */
+  ctx.lineWidth = 6;
+  for (let i = 0; i < leftEdge.length; i++) {
+    const t = leftEdge[i].y / H();
+    const perspective = 0.1 + t * 1.0;
+    const alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
+
+    // 左縁
+    ctx.strokeStyle = `rgba(40,120,100,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
+    if (i < leftEdge.length - 1) ctx.lineTo(leftEdge[i + 1].x, leftEdge[i + 1].y);
+    ctx.stroke();
+
+    // 右縁
+    ctx.strokeStyle = `rgba(40,120,100,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
+    if (i < rightEdge.length - 1) ctx.lineTo(rightEdge[i + 1].x, rightEdge[i + 1].y);
+    ctx.stroke();
   }
 
   /* ===== センターライン ===== */
   ctx.strokeStyle = "rgba(140,220,180,0.35)";
   ctx.lineWidth = 2;
-  ctx.setLineDash([24, 24]);
-
+  ctx.setLineDash([3, 3]);
   ctx.beginPath();
   for (let i = 0; i < leftEdge.length; i++) {
     const cx = (leftEdge[i].x + rightEdge[i].x) / 2;
@@ -670,13 +692,12 @@ function drawRoad() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  /* ===== 遠景フォグ ===== */
+  /* ===== 道専用フォグ ===== */
   ctx.save();
-
-  // 道の形でクリップ
   ctx.beginPath();
   for (let i = 0; i < leftEdge.length; i++) {
-    ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+    if (i === 0) ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
+    else ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
   }
   for (let i = rightEdge.length - 1; i >= 0; i--) {
     ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
@@ -684,16 +705,14 @@ function drawRoad() {
   ctx.closePath();
   ctx.clip();
 
-  // 道の上10％にフォグ
   const fog = ctx.createLinearGradient(0, 0, 0, H() * 0.1);
   fog.addColorStop(0, "rgba(20,0,40,1)");
   fog.addColorStop(1, "rgba(20,0,40,0)");
-
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, W(), H() * 0.1);
-
   ctx.restore();
 }
+
 
 
 
@@ -709,8 +728,8 @@ function drawBall() {
   const r = BALL_R * perspective * ballScale;               // ボール半径（遠近・スケール反映）
 
   /* ===== 影 ===== */
-  const shadowWidth = 24 * perspective;  // 横を少し大きく
-  const shadowHeight = 10 * perspective; // 縦も大きく
+  const shadowWidth = 14 * perspective;  // 横を少し大きく
+  const shadowHeight = 5 * perspective; // 縦も大きく
   const shadowAlpha = 0.4 * perspective; // 奥行きで薄く
 
   ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`;
@@ -1222,4 +1241,4 @@ function ballPerspectiveRadius(y) {
 
 </script>
 </body>
-</html
+</html>
