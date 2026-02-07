@@ -95,7 +95,7 @@ html, body {
 
 #startBtn {
   position: fixed;
-  top:80%;
+  top:70%;
   left:50%;
   transform: translate(-50%,-50%);
   padding:12px 24px;
@@ -517,7 +517,7 @@ let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
 let lives = 3, invincible = 0, isGameOver = false, gameStarted = false, scoreStarted = false;
 const roadWidth = 150;
 let ballDestroyed = false, ballScale = 1;
-let ballX=0, ballY=H()*0.6, ballVX=0, ballVY=0, inputX=0, inputY=0;
+let ballX=0, ballY=H()*0.5, ballVX=0, ballVY=0, inputX=0, inputY=0;
 const BALL_R = 14;
 const keys = {};
 
@@ -536,30 +536,31 @@ function enableDeviceOrientation() {
 }
 
 function handleOrientation(e) {
-  let gamma = e.gamma || 0;
-  let beta  = e.beta  || 0;
+  let x = e.gamma || 0; // 左右
+  let y = e.beta  || 0; // 上下
 
-  // 端末の向きに応じて反転・入れ替え
-  const orientation = window.orientation || 0;
-  switch (orientation) {
-    case 90:   // landscape右
-      [gamma, beta] = [-beta, gamma];
+  const angle = screen.orientation?.angle || 0;
+
+  switch (angle) {
+    case 0: // portrait
       break;
-    case -90:  // landscape左
-      [gamma, beta] = [beta, -gamma];
+    case 90: // landscape right
+      [x, y] = [y, -x];
       break;
-    case 180:  // upside-down portrait
-      gamma = -gamma;
-      beta  = -beta;
+    case 180: // upside-down
+      x = -x;
+      y = -y;
       break;
-    default:   // portrait
+    case 270: // landscape left
+      [x, y] = [-y, x];
       break;
   }
 
-  const sensitivity = 0.05;
-  tiltInputX = gamma * sensitivity;
-  tiltInputY = beta * sensitivity;
+  const sensitivity = 0.04;
+  tiltInputX = x * sensitivity;
+  tiltInputY = y * sensitivity;
 }
+
 
 
 /* ===== 星 ===== */
@@ -721,7 +722,7 @@ function drawBall() {
   if (isGameOver) return;
 
   /* ===== 球の中心座標 ===== */
-  const cy = gameStarted ? ballY : H() * 0.7;               // Y座標
+  const cy = gameStarted ? ballY : H() * 0.5;               // Y座標
   const cx = roadCenter(cy) + (gameStarted ? ballX : 0);    // 道の中央に配置
   const t = cy / H();                                       // 遠近係数
   const perspective = 0.1 + t * 1.0;                        // 0.1〜1.1
@@ -840,7 +841,7 @@ function updateGameOver() {
     controlImg.style.display = "block";   // ← トップ復帰で再表示
 
     ballX = 0;
-    ballY = H() * 0.7;
+    ballY = H() * 0.5;
     ballVX = 0;
     ballVY = 0;
     inputX = 0;
@@ -887,7 +888,7 @@ function updateBall(){
   const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
 
   const targetX = tx + tiltInputX;
-  const targetY = ty + tiltInputY;
+  const targetY = ty + tiltInputY * 0.4;   // ★ 上下入力を40％に
 
   // 入力追従
 inputX += (targetX - inputX) * 0.02;
@@ -897,9 +898,9 @@ inputY += (targetY - inputY) * 0.02;
 ballVX += inputX * 0.06;
 ballVY += inputY * 0.06;
 
-// 摩擦
-ballVX *= 0.96;
-ballVY *= 0.96;
+// 摩擦（1に近い程摩擦が少ない）
+ballVX *= 0.98;
+ballVY *= 0.98;
 
 
 
@@ -910,14 +911,17 @@ const limit = (roadWidth * perspective) / 2 - BALL_R;
   const bouncePower = 5.0;   // ★ 上下反発の強さ（ここだけ調整）
 
   /* ===== 自動前進（代入しない）===== */
-  if (
-    Math.abs(inputX) < 0.01 &&
-    Math.abs(inputY) < 0.01 &&
-    !gameOverPending
-  ) {
-    ballVY += (-0.6 - ballVY) * 0.05;
-    ballVX += ( 0.1 - ballVX) * 0.05;
-  }
+/*
+if (
+  Math.abs(inputX) < 0.01 &&
+  Math.abs(inputY) < 0.01 &&
+  !gameOverPending
+) {
+  ballVY += (-0.6 - ballVY) * 0.05;
+  ballVX += ( 0.1 - ballVX) * 0.05;
+}
+*/
+
 
   /* ===== 移動 ===== */
   ballX += ballVX;
@@ -1116,9 +1120,9 @@ startBtn.onclick = () => {
   nextLifeScore = 50000;
 
   ballX = 0;
-  ballY = H() * 0.7;
-  ballVX = 0;
-  ballVY = -0.6;
+  ballY = H() * 0.5;
+  ballVX = 0.4;   // ★ 少し右へ
+  ballVY = 0;     // ★ 上昇しない
 
   inputX = 0;
   inputY = 0;
