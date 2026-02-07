@@ -603,98 +603,60 @@ function drawRoad() {
   const leftEdge = [];
   const rightEdge = [];
 
- for (let y = 0; y <= H(); y += 2) {
+  for (let y = 0; y <= H(); y += 2) {
 
-  const cx = roadCenter(y);
+    const cx = roadCenter(y);
 
-  // 0（奥）〜1（手前）
-  const t = y / H();
+    // 0（奥）〜1（手前）
+    const t = y / H();
 
-  // 遠近係数（奥で細く）
-  const perspective = 0.1 + t * 1.0;
+    // 遠近係数（奥で細く）
+    const perspective = 0.1 + t * 1.0;
 
+    // 道幅を上端（0〜10％）で徐々にゼロに
+    const fadeStart = H() * 0.1; // 上端10％
+    let roadW = roadWidth * perspective;
+    if (y < fadeStart) {
+      roadW *= y / fadeStart; // 上端で0
+    }
 
-  const w = roadWidth * perspective;
-
-  leftEdge.push({ x: cx - w / 2, y });
-  rightEdge.push({ x: cx + w / 2, y });
-}
-
+    leftEdge.push({ x: cx - roadW / 2, y });
+    rightEdge.push({ x: cx + roadW / 2, y });
+  }
 
   /* ===== 路面 ===== */
-
   for (let i = 0; i < leftEdge.length; i++) {
 
     const y = leftEdge[i].y;
     const lx = leftEdge[i].x;
     const rx = rightEdge[i].x;
 
+    // 道幅がほぼ0なら描画スキップ
+    if (rx - lx < 1) continue;
+
     const roadGrad = ctx.createLinearGradient(lx, 0, rx, 0);
 
     // ダークエメラルド + 中央沈み
     roadGrad.addColorStop(0, "#2a7a6d");
-roadGrad.addColorStop(0.35, "#145046");
-roadGrad.addColorStop(0.5, "#0a2a26");
-roadGrad.addColorStop(0.65, "#145046");
-roadGrad.addColorStop(1, "#2a7a6d");
-
+    roadGrad.addColorStop(0.35, "#145046");
+    roadGrad.addColorStop(0.5, "#0a2a26");
+    roadGrad.addColorStop(0.65, "#145046");
+    roadGrad.addColorStop(1, "#2a7a6d");
 
     ctx.fillStyle = roadGrad;
     ctx.fillRect(lx, y, rx - lx, 2);
 
     // 縦方向の遠近グラデーション（奥暗く・手前明るく）
-const depthGrad = ctx.createLinearGradient(0, 0, 0, H());
+    const depthGrad = ctx.createLinearGradient(0, 0, 0, H());
+    depthGrad.addColorStop(0, "rgba(0,0,0,0.65)");    // 奥
+    depthGrad.addColorStop(0.45, "rgba(0,0,0,0.25)");  // 中間
+    depthGrad.addColorStop(1, "rgba(255,255,255,0.12)"); // 手前
 
-// 奥：しっかり沈む
-depthGrad.addColorStop(0, "rgba(0,0,0,0.65)");
-
-// 中間
-depthGrad.addColorStop(0.45, "rgba(0,0,0,0.25)");
-
-// 手前：はっきり反射
-depthGrad.addColorStop(1, "rgba(255,255,255,0.12)");
-
-
-ctx.fillStyle = depthGrad;
-ctx.fillRect(lx, y, rx - lx, 2);
-
+    ctx.fillStyle = depthGrad;
+    ctx.fillRect(lx, y, rx - lx, 2);
   }
-
-  /* ===== 縁の立体 ===== */
-
-  // 外側シャドウ
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.beginPath();
-  for (let i = 0; i < leftEdge.length; i++) {
-    if (i === 0) ctx.moveTo(leftEdge[i].x - 6, leftEdge[i].y);
-    else ctx.lineTo(leftEdge[i].x - 6, leftEdge[i].y);
-  }
-  for (let i = rightEdge.length - 1; i >= 0; i--) {
-    ctx.lineTo(rightEdge[i].x + 6, rightEdge[i].y);
-  }
-  ctx.stroke();
-
-  // 内側ハイライト（唯一の装飾）
-  const edgeGrad = ctx.createLinearGradient(0, 0, 0, H());
-  edgeGrad.addColorStop(0, "rgba(40,120,100,0.35)");
-  edgeGrad.addColorStop(1, "rgba(120,200,160,0.8)");
-
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = edgeGrad;
-
-  ctx.beginPath();
-  for (let i = 0; i < leftEdge.length; i++) {
-    if (i === 0) ctx.moveTo(leftEdge[i].x + 2, leftEdge[i].y);
-    else ctx.lineTo(leftEdge[i].x + 2, leftEdge[i].y);
-  }
-  for (let i = rightEdge.length - 1; i >= 0; i--) {
-    ctx.lineTo(rightEdge[i].x - 2, rightEdge[i].y);
-  }
-  ctx.stroke();
 
   /* ===== センターライン ===== */
-
   ctx.strokeStyle = "rgba(140,220,180,0.35)";
   ctx.lineWidth = 2;
   ctx.setLineDash([24, 24]);
@@ -708,35 +670,30 @@ ctx.fillRect(lx, y, rx - lx, 2);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // ===== 遠景フォグ（黒帯消し）=====
-// ===== 道だけにフォグをかける =====
-ctx.save();
+  /* ===== 遠景フォグ ===== */
+  ctx.save();
 
-// 道の形でクリップ
-ctx.beginPath();
-for (let i = 0; i < leftEdge.length; i++) {
-  if (i === 0) ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
-  else ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  // 道の形でクリップ
+  ctx.beginPath();
+  for (let i = 0; i < leftEdge.length; i++) {
+    ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  }
+  for (let i = rightEdge.length - 1; i >= 0; i--) {
+    ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  // 道の上10％にフォグ
+  const fog = ctx.createLinearGradient(0, 0, 0, H() * 0.1);
+  fog.addColorStop(0, "rgba(20,0,40,1)");
+  fog.addColorStop(1, "rgba(20,0,40,0)");
+
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, 0, W(), H() * 0.1);
+
+  ctx.restore();
 }
-for (let i = rightEdge.length - 1; i >= 0; i--) {
-  ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
-}
-ctx.closePath();
-ctx.clip();
-
-// 上5%だけフォグ
-const fog = ctx.createLinearGradient(0, 0, 0, H() * 0.15);
-fog.addColorStop(0, "rgba(20,0,40,1)");
-fog.addColorStop(1, "rgba(20,0,40,0)");
-
-ctx.fillStyle = fog;
-ctx.fillRect(0, 0, W(), H() * 0.15);
-
-ctx.restore();
-
-
-}
-
 
 
 
@@ -744,134 +701,94 @@ ctx.restore();
 function drawBall() {
   if (isGameOver) return;
 
-  /* ===== トップ画面用 ===== */
-  if (!gameStarted) {
-    const ballYTop = H() * 0.7;
-    const cx = roadCenter(ballYTop);
-    const cy = ballYTop;
+  /* ===== 球の中心座標 ===== */
+  const cy = gameStarted ? ballY : H() * 0.7;               // Y座標
+  const cx = roadCenter(cy) + (gameStarted ? ballX : 0);    // 道の中央に配置
+  const t = cy / H();                                       // 遠近係数
+  const perspective = 0.1 + t * 1.0;                        // 0.1〜1.1
+  const r = BALL_R * perspective * ballScale;               // ボール半径（遠近・スケール反映）
 
-    // 影
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 10, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+  /* ===== 影 ===== */
+  const shadowWidth = 24 * perspective;  // 横を少し大きく
+  const shadowHeight = 10 * perspective; // 縦も大きく
+  const shadowAlpha = 0.4 * perspective; // 奥行きで薄く
 
-    // ボール
-const t = cy / H();
-const perspective = 0.1 + t * 1.0;
-const r = ballPerspectiveRadius(cy);
-
-
-// 影
-ctx.fillStyle = "rgba(0,0,0,0.4)";
-ctx.beginPath();
-ctx.ellipse(cx, cy + 10 * perspective, 14 * perspective, 5 * perspective, 0, 0, Math.PI * 2);
-ctx.fill();
-
-// ボール
-const g = ctx.createRadialGradient(
-  cx - 5 * perspective,
-  cy - 5 * perspective,
-  2 * perspective,
-  cx,
-  cy,
-  r * 1.3
-);
-
-g.addColorStop(0, "#fff2dd");
-g.addColorStop(1, "#ff8c1a");
-
-ctx.fillStyle = g;
-ctx.beginPath();
-ctx.arc(cx, cy, r, 0, Math.PI * 2);
-ctx.fill();
-
-    return;
-  }
-
-  const cx = roadCenter(ballY) + ballX;
+  ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 10 * perspective, shadowWidth, shadowHeight, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   /* ===== 通常プレイ中 ===== */
   if (!ballDestroyed) {
-
-    // 影
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.beginPath();
-    ctx.ellipse(cx, ballY + 10, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ★ 横ヒット時フラッシュ色
     let g;
-if (sideHitFlash > 0) {
-  g = ctx.createRadialGradient(cx - 6, ballY - 6, 2, cx, ballY, 20);
 
-  // 中央：白熱
-  g.addColorStop(0, "#ffffff");
-
-  // 中間：薄いアンバー
-  g.addColorStop(0.6, "#ffd8a0");
-
-  // 外周：元のオレンジ
-  g.addColorStop(1, "#ff8c1a");
-
-  sideHitFlash--;
-} else {
-      g = ctx.createRadialGradient(cx - 5, ballY - 5, 2, cx, ballY, 18);
+    if (sideHitFlash > 0) {
+      // 横ヒット時フラッシュ
+      g = ctx.createRadialGradient(
+        cx - 6 * perspective,
+        cy - 6 * perspective,
+        2 * perspective,
+        cx,
+        cy,
+        r * 1.1
+      );
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.6, "#ffd8a0");
+      g.addColorStop(1, "#ff8c1a");
+      sideHitFlash--;
+    } else {
+      // 通常ボール
+      g = ctx.createRadialGradient(
+        cx - 5 * perspective,
+        cy - 5 * perspective,
+        2 * perspective,
+        cx,
+        cy,
+        r * 1.1
+      );
       g.addColorStop(0, "#fff2dd");
-g.addColorStop(1, "#ff8c1a");
-
+      g.addColorStop(1, "#ff8c1a");
     }
 
     ctx.fillStyle = g;
     ctx.beginPath();
-    const t = ballY / H();
-const perspective = 0.1 + t * 1.0;
-const r = ballPerspectiveRadius(ballY);
-ctx.arc(cx, ballY, r, 0, Math.PI * 2);
-
-
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
 
-} else {
-  /* ===== 爆発演出（色変化付き） ===== */
-  explodeFrame += 0.05;
-  explodeColorPhase += 0.04;
+  } else {
+    /* ===== 爆発演出 ===== */
+    explodeFrame += 0.05;
+    explodeColorPhase += 0.04;
 
-  const cx = roadCenter(ballY) + ballX;
+    const rCol = 255;
+    const gCol = Math.floor(140 + 80 * explodeColorPhase);
+    const bCol = Math.floor(40 + 40 * explodeColorPhase);
 
-  // オレンジ → アンバー → 白
-const r = 255;
-const g = Math.floor(140 + 80 * explodeColorPhase);
-const b = Math.floor(40 + 40 * explodeColorPhase);
+    // 中央コア
+    const coreR = BALL_R * (1 - explodeFrame * 0.05);
+    if (coreR > 0) {
+      const gCore = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+      gCore.addColorStop(0, `rgba(${rCol},${gCol},${bCol},0.95)`);
+      gCore.addColorStop(1, `rgba(${rCol},${gCol},${bCol},0.3)`);
+      ctx.fillStyle = gCore;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-
-  /* --- 中央コア --- */
-  const coreR = BALL_R * (1 - explodeFrame * 0.05);
-  if (coreR > 0) {
-    const gCore = ctx.createRadialGradient(cx, ballY, 0, cx, ballY, coreR);
-    gCore.addColorStop(0, `rgba(${r},${g},${b},0.95)`);
-    gCore.addColorStop(1, `rgba(${r},${g},${b},0.3)`);
-    ctx.fillStyle = gCore;
-
-    ctx.beginPath();
-    ctx.arc(cx, ballY, coreR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /* --- 拡散リング --- */
-  const ringR = BALL_R + explodeFrame * 3;
-  const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
-  if (ringAlpha > 0) {
-    ctx.strokeStyle = `rgba(${r},${g},${b},${ringAlpha})`;
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.arc(cx, ballY, ringR, 0, Math.PI * 2);
-    ctx.stroke();
+    // 拡散リング
+    const ringR = BALL_R + explodeFrame * 3;
+    const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
+    if (ringAlpha > 0) {
+      ctx.strokeStyle = `rgba(${rCol},${gCol},${bCol},${ringAlpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 }
 
-}
 
 
 /* ===== ゲームオーバー ===== */
@@ -987,9 +904,10 @@ const limit = (roadWidth * perspective) / 2 - BALL_R;
   ballX += ballVX;
   ballY += ballVY;
 
-  /* ===== 上端（常に強制反射・ノーダメージ）===== */
-if (ballY <= 20) {
-  ballY = 20;
+/* ===== 上端（常に強制反射・ノーダメージ）===== */
+const upperLimit = H() * 0.3; // ← 上限を画面の30％に設定
+if (ballY <= upperLimit) {
+  ballY = upperLimit;
   ballVY = +bouncePower;
 
   // ★ 必ず斜めにする
