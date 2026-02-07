@@ -1125,7 +1125,11 @@ if (gameStarted) {
  // テルを発生＆流す処理
 const tellLevel = Math.min(5, 1 + score / 100000); // 20000なら地獄
 
-if (gameStarted && Math.random() < 0.0010 * tellLevel) {
+if (
+  gameStarted &&
+  score >= 10000 &&           // ← 1万点超えてから解禁
+  Math.random() < 0.0010 * tellLevel
+) {
   spawnHole();
 }
 
