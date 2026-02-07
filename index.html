@@ -557,6 +557,29 @@ function handleOrientation(e) {
 }
 
 
+function enableDeviceOrientation() {
+
+  // iOS用（Safari）
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    DeviceOrientationEvent.requestPermission()
+      .then(permissionState => {
+        if (permissionState === "granted") {
+          window.addEventListener("deviceorientation", handleOrientation);
+          console.log("gyro enabled (iOS)");
+        }
+      })
+      .catch(console.error);
+
+  } else {
+    // Android / その他
+    window.addEventListener("deviceorientation", handleOrientation);
+    console.log("gyro enabled");
+  }
+}
+
 
 
 /* ===== 星 ===== */
