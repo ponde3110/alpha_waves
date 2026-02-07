@@ -614,8 +614,9 @@ bg.addColorStop(1, "#020008");
 }
 
 
-/* ===== テル ===== */
+/* ===== テル＆はたピー ===== */
 const holes = [];
+const hatapies = [];   // ← 下から上がる「はたピー」
 
 function spawnHole() {
   holes.push({
@@ -623,6 +624,15 @@ function spawnHole() {
     xOffset: (Math.random() - 0.5) * roadWidth * 0.6,
     r: 6 + Math.random() * (4 + score / 20000),
     h: 12 + Math.random() * 10   // 高さ（立体感用）
+  });
+}
+
+function spawnHatapie() {
+  hatapies.push({
+    y: H() + 40,   // 画面下から出現
+    xOffset: (Math.random() - 0.5) * roadWidth * 0.6,
+    r: 6 + Math.random() * 6,
+    h: 12 + Math.random() * 10
   });
 }
 
@@ -675,16 +685,17 @@ function drawRoad() {
     ctx.fillRect(lx, y, rx - lx, 2);
   }
 
+
 // 道の縁（奥行き反映）
-ctx.lineWidth = 6;
 for (let i = 0; i < leftEdge.length; i++) {
   const t = leftEdge[i].y / H();
   const perspective = 0.1 + t * 1.0;
   let alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
 
   // 左縁
+  ctx.lineWidth = sideHitFlashLeft > 0 ? 2 : 3;  // 光るときは細め、通常より少し細め
   ctx.strokeStyle = sideHitFlashLeft > 0
-    ? `rgba(255,255,150,${alpha})`  // 光る色
+    ? `rgba(160,255,180,${0.25 + 0.3 * perspective})`  // 上品な薄緑
     : `rgba(40,120,100,${alpha})`;
   ctx.beginPath();
   ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
@@ -692,8 +703,9 @@ for (let i = 0; i < leftEdge.length; i++) {
   ctx.stroke();
 
   // 右縁
+  ctx.lineWidth = sideHitFlashRight > 0 ? 2 : 3;
   ctx.strokeStyle = sideHitFlashRight > 0
-    ? `rgba(255,255,150,${alpha})`  // 光る色
+    ? `rgba(160,255,180,${0.25 + 0.3 * perspective})`  // 上品な薄緑
     : `rgba(40,120,100,${alpha})`;
   ctx.beginPath();
   ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
@@ -701,9 +713,10 @@ for (let i = 0; i < leftEdge.length; i++) {
   ctx.stroke();
 }
 
-// フラッシュを減算
+// フラッシュを減算（短め 3フレーム）
 if (sideHitFlashLeft > 0) sideHitFlashLeft--;
 if (sideHitFlashRight > 0) sideHitFlashRight--;
+
 
 
   /* ===== センターライン ===== */
@@ -787,6 +800,44 @@ holes.forEach(o => {
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
 });
+
+
+// ===== はたピー（下から上がる物体） =====
+hatapies.forEach((o, index) => {
+  if (o.y < 0 || o.y > H()) return;
+
+  const t = o.y / H();
+  const p = 0.1 + t * 1.0;
+
+  const cx = roadCenter(o.y) + o.xOffset;
+  const floatY = o.y + Math.sin(Date.now()/500 + index) * 6;
+
+  // 輝き（淡濃）
+  const alpha = 0.5 + 0.5 * Math.sin(Date.now()/400 + index);
+
+  const r = o.r * p;
+
+  // 美しいピンク系グラデーション
+  const glow = ctx.createRadialGradient(cx, floatY, 1, cx, floatY, r);
+  glow.addColorStop(0, `rgba(255,240,245,${alpha})`); // ほぼ白のピンク
+  glow.addColorStop(0.3, `rgba(255,182,193,${alpha})`); // 薄いピンク
+  glow.addColorStop(0.6, `rgba(255,105,180,${alpha})`); // ホットピンク
+  glow.addColorStop(0.85, `rgba(219,112,147,${alpha * 0.8})`); // 少し濃いピンク
+  glow.addColorStop(1, `rgba(199,21,133,0)`); // 外側は透明で自然に消える
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, floatY, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 外枠も光らせる（柔らかく）
+  ctx.strokeStyle = `rgba(255,105,180,${0.5 * p * alpha})`;
+  ctx.lineWidth = 1.5 * p;
+  ctx.beginPath();
+  ctx.arc(cx, floatY, r, 0, Math.PI * 2);
+  ctx.stroke();
+});
+
 
 
 
@@ -910,6 +961,9 @@ function updateGameOver() {
   setTimeout(() => {
     gameStarted = false;
     isGameOver = false;
+
+    holes.length = 0;   // ← テルを全消去
+    hatapies.length = 0;
 
     gameoverLabel.style.display = "none";
     title.style.display = "block";
@@ -1040,7 +1094,7 @@ function updateBall(){
     if (lives === 0) gameOverPending = true;
   }
 
-  /* ===== 🔥 障害物との衝突判定（追加部分） ===== */
+  /* ===== テルとの衝突判定 ===== */
 holes.forEach((o, i) => {
 
   if (invincible > 0) return;
@@ -1080,6 +1134,50 @@ holes.forEach((o, i) => {
     if (lives <= 0) gameOverPending = true;
   }
 });
+
+/* ===== はたピーとの衝突判定 ===== */
+hatapies.forEach((o, i) => {
+  const tObj = o.y / H();
+  const pObj = 0.1 + tObj * 1.0;
+
+  const cx = roadCenter(o.y) + o.xOffset;
+  const cy = o.y + 6 * pObj;   // 接地補正
+  const objR = o.r * pObj;
+
+  const tBall = ballY / H();
+  const pBall = 0.1 + tBall * 1.0;
+
+  const ballCX = roadCenter(ballY) + ballX;
+  const ballCY = ballY;
+  const ballR  = BALL_R * pBall;
+
+  const dx = ballCX - cx;
+  const dy = ballCY - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < ballR + objR * 0.85) {
+    // ===== 接触時の処理 =====
+    if (lives < maxLives) {
+      lives++;                  // ライフ増加（上限5）
+      updateLivesDisplay();     // ライフ表示更新
+      hatapiesSound();          // 収集音
+
+      // 表示メッセージの切り替え
+      if (lives === maxLives) {
+        showLifeUpMessage("Max Life!"); // ★ ライフ上限時
+        lifeUpMessage.style.color = "#ffd700"; // ゴールド
+      } else {
+        showLifeUpMessage("Life Up!");
+        lifeUpMessage.style.color = "#ff8c1a"; // ハート色
+      }
+    }
+
+    // 接触済みはたピーを削除
+    hatapies.splice(i, 1);
+  }
+});
+
+
 
 
   /* ===== クランプ ===== */
@@ -1122,7 +1220,7 @@ if (gameStarted) {
 
   offset += baseSpeed + forward;
 
- // テルを発生＆流す処理
+ // テルとはたピーを発生＆流す処理
 const tellLevel = Math.min(5, 1 + score / 100000); // 20000なら地獄
 
 if (
@@ -1133,10 +1231,30 @@ if (
   spawnHole();
 }
 
+// ===== はたピー出現処理 =====
+if (gameStarted) {
+
+  // ライフが満タン5なら新しいはたピーは生成しない
+  if (lives < 5 && Math.random() < 0.0003) {
+    spawnHatapie();
+  }
+
+  // ライフが5になったら、画面上のはたピーをすべて消す
+  if (lives >= 5 && hatapies.length > 0) {
+    hatapies.length = 0;  // 配列を空にする
+  }
+}
+
+
 
 holes.forEach(h => {
   h.y += 0.6;　// 1.4なら多め
 });
+
+hatapies.forEach(h => {
+  h.y -= 0.6;   // ← 上へ上昇
+});
+
 
 
   if (!isGameOver) {
@@ -1426,6 +1544,44 @@ function tellDestroySound() {
   osc.start(now);
   osc.stop(now + 0.16);
 }
+
+// ★ はたピー取得音（ピコピコ系）作成
+function hatapiesSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const now = ctx.currentTime;
+
+  // 「は」「た」「ぴー」の順に周波数を変えて再生
+  const notes = [
+    { freq: 660, duration: 0.08 },  // は（短め低音）
+    { freq: 880, duration: 0.08 },  // た（短め中音）
+    { freq: 1320, duration: 0.18 }  // ぴー（少し長め高音）
+  ];
+
+  let currentTime = now;
+
+  notes.forEach(n => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";           // 可愛い音
+    osc.frequency.value = n.freq;
+
+    gain.gain.value = 0.15;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(currentTime);
+    osc.stop(currentTime + n.duration);
+
+    // 徐々に音をフェードアウト
+    gain.gain.setValueAtTime(0.15, currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, currentTime + n.duration);
+
+    currentTime += n.duration;
+  });
+}
+
 
 
 
