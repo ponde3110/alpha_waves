@@ -1045,7 +1045,7 @@ function updateBall(){
   const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
 
   const targetX = tx + tiltInputX;
-  const targetY = ty + (isMobileTilt ? tiltInputY * 0.5 : 0);
+  const targetY = ty + (isMobileTilt ? tiltInputY : 0);
 
   inputX += (targetX - inputX) * 0.02;
   inputY += (targetY - inputY) * 0.02;
@@ -1571,6 +1571,7 @@ function tellDestroySound() {
 
 // ★ はたピー取得音（ピコピコ系）作成
 function hatapiesSound() {
+  if (muted) return;   // ★ ミュート対応
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const now = ctx.currentTime;
 
