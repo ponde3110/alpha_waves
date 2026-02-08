@@ -278,7 +278,6 @@ box-shadow:
 }
 
 
-
 </style>
 </head>
 <body>
@@ -714,9 +713,9 @@ for (let i = 0; i < leftEdge.length; i++) {
   let alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
 
   // 左縁
-  ctx.lineWidth = sideHitFlashLeft > 0 ? 2 : 3;  // 光るときは細め、通常より少し細め
+  ctx.lineWidth = sideHitFlashLeft > 0 ? 3 : 3;  // 光るときは細め、通常より少し細め
   ctx.strokeStyle = sideHitFlashLeft > 0
-    ? `rgba(160,255,180,${0.25 + 0.3 * perspective})`  // 上品な薄緑
+    ? `rgba(154,135,44,${0.25 + 0.3 * perspective})` // 金
     : `rgba(40,120,100,${alpha})`;
   ctx.beginPath();
   ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
@@ -724,9 +723,9 @@ for (let i = 0; i < leftEdge.length; i++) {
   ctx.stroke();
 
   // 右縁
-  ctx.lineWidth = sideHitFlashRight > 0 ? 2 : 3;
+  ctx.lineWidth = sideHitFlashRight > 0 ? 3 : 3;
   ctx.strokeStyle = sideHitFlashRight > 0
-    ? `rgba(160,255,180,${0.25 + 0.3 * perspective})`  // 上品な薄緑
+    ? `rgba(154,135,44,${0.25 + 0.3 * perspective})`  // 金
     : `rgba(40,120,100,${alpha})`;
   ctx.beginPath();
   ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
@@ -879,6 +878,9 @@ function drawBall() {
   const perspective = 0.1 + t * 1.0;                        // 0.1〜1.1
   const r = BALL_R * perspective * ballScale;               // ボール半径（遠近・スケール反映）
 
+  /* ===== スタート画面では半透明にならないようにする ===== */
+  const alpha = gameStarted ? 1 : 1.0;   // ★ ここで強制的に不透明に
+
   /* ===== 影 ===== */
   const shadowWidth = 14 * perspective;  // 横を少し大きく
   const shadowHeight = 5 * perspective; // 縦も大きく
@@ -893,20 +895,24 @@ function drawBall() {
   if (!ballDestroyed) {
     let g;
 
-    if (sideHitFlash > 0) {
-      // 横ヒット時フラッシュ
-      g = ctx.createRadialGradient(
-        cx - 6 * perspective,
-        cy - 6 * perspective,
-        2 * perspective,
-        cx,
-        cy,
-        r * 1.1
-      );
-      g.addColorStop(0, "#ffffff");
-      g.addColorStop(0.6, "#ffd8a0");
-      g.addColorStop(1, "#ff8c1a");
-      sideHitFlash--;
+if (sideHitFlash > 0) {
+  // 横ヒット時フラッシュ（赤→金色半透明に変更）
+  const alpha = 0.4; // 半透明
+  g = ctx.createRadialGradient(
+    cx - 6 * perspective,
+    cy - 6 * perspective,
+    2 * perspective,
+    cx,
+    cy,
+    r * 1.1
+  );
+  g.addColorStop(0.0, `rgba(230,217,138,${alpha})`);  // ハイライト
+  g.addColorStop(0.25, `rgba(154,135,44,${alpha})`);  // ダークゴールド
+  g.addColorStop(0.55, `rgba(111,98,32,${alpha})`);   // かなり暗い影
+  g.addColorStop(0.8, `rgba(168,147,50,${alpha})`);   // 戻り光
+  g.addColorStop(1.0, `rgba(255,140,26,${alpha})`);   // 外周オレンジ
+
+  sideHitFlash--;
     } else {
       // 通常ボール
       g = ctx.createRadialGradient(
@@ -917,8 +923,12 @@ function drawBall() {
         cy,
         r * 1.1
       );
-      g.addColorStop(0, "#fff2dd");
-      g.addColorStop(1, "#ff8c1a");
+  g.addColorStop(0.0, "#e6d98a");   // ハイライト
+  g.addColorStop(0.25, "#9a872c");  // ダークゴールド
+  g.addColorStop(0.55, "#6f6220");  // かなり暗い影
+  g.addColorStop(0.8, "#a89332");   // 戻り光
+  g.addColorStop(1.0, "#ff8c1a");   // 外周オレンジ
+
     }
 
     ctx.fillStyle = g;
@@ -927,36 +937,63 @@ function drawBall() {
     ctx.fill();
 
   } else {
-    /* ===== 爆発演出 ===== */
-    explodeFrame += 0.05;
-    explodeColorPhase += 0.04;
+/* ===== 爆発演出（膨張 → 霧化） ===== */
+explodeFrame += 0.05;  // 時間の進行
 
-    const rCol = 255;
-    const gCol = Math.floor(140 + 80 * explodeColorPhase);
-    const bCol = Math.floor(40 + 40 * explodeColorPhase);
+// スタート画面やゲームオーバー後に透明化を外す
+const alpha = 1.0;
 
-    // 中央コア
-    const coreR = BALL_R * (1 - explodeFrame * 0.05);
-    if (coreR > 0) {
-      const gCore = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-      gCore.addColorStop(0, `rgba(${rCol},${gCol},${bCol},0.95)`);
-      gCore.addColorStop(1, `rgba(${rCol},${gCol},${bCol},0.3)`);
-      ctx.fillStyle = gCore;
-      ctx.beginPath();
-      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-      ctx.fill();
-    }
+// フェーズ1: 金属ボール膨張
+if (explodeFrame < 20) {
+  const expandedR = BALL_R * (1 + explodeFrame * 0.1); // ゆっくり膨張
+  const coreAlpha = Math.max(0, 1 - explodeFrame * 0.03); // 徐々に透明化
 
-    // 拡散リング
-    const ringR = BALL_R + explodeFrame * 3;
-    const ringAlpha = Math.max(0, 1 - explodeFrame * 0.06);
-    if (ringAlpha > 0) {
-      ctx.strokeStyle = `rgba(${rCol},${gCol},${bCol},${ringAlpha})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+  // 金属グラデーション
+  const g = ctx.createRadialGradient(
+    cx - 5 * 0.1, // 遠近に応じて微調整
+    cy - 5 * 0.1,
+    2 * 0.1,
+    cx,
+    cy,
+    expandedR * 1.1
+  );
+  g.addColorStop(0.0, `rgba(230,217,138,${coreAlpha})`);   // ハイライト
+  g.addColorStop(0.25, `rgba(154,135,44,${coreAlpha})`);   // ダークゴールド
+  g.addColorStop(0.55, `rgba(111,98,32,${coreAlpha})`);    // かなり暗い影
+  g.addColorStop(0.8, `rgba(168,147,50,${coreAlpha})`);    // 戻り光
+  g.addColorStop(1.0, `rgba(255,140,26,${coreAlpha})`);    // 外周オレンジ
+
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, expandedR, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// フェーズ2: 霧状粒子
+else {
+  const fogFrame = explodeFrame - 20; // 霧開始フレーム
+  const particleCount = 25; // 粒子数
+  for (let i = 0; i < particleCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 2 + 0.5;
+    const px = cx + Math.cos(angle) * fogFrame * speed * 1.5;
+    const py = cy + Math.sin(angle) * fogFrame * speed * 1.5;
+    const pr = Math.random() * 1 + 0.3;
+    const alpha = Math.max(0, 0.5 - fogFrame * 0.03);
+
+    // 金属感のある小粒子
+    const shade = 180 + Math.floor(Math.random() * 75);
+    ctx.fillStyle = `rgba(${shade},${shade},0,${alpha})`;
+
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+
+
+
   }
 }
 
@@ -994,13 +1031,14 @@ function updateGameOver() {
 
     controlImg.style.display = "block";   // ← トップ復帰で再表示
 
+
     ballX = 0;
     ballY = H() * 0.5;
     ballVX = 0;
     ballVY = 0;
     inputX = 0;
     inputY = 0;
-  }, 5000);
+  }, 3000);
 }
 
 
@@ -1014,7 +1052,7 @@ addEventListener("keyup", e => keys[e.code] = false);
 
 /* ===== ライフ表示 ===== */
 const maxLives = 5;
-function updateLivesDisplay(){
+function updateLivesDisplay() {
   // トップ画面では表示しない
   if (!gameStarted) {
     livesLabel.innerHTML = "";
@@ -1023,14 +1061,15 @@ function updateLivesDisplay(){
 
   livesLabel.innerHTML = "";
 
-for (let i = 0; i < lives; i++) {
-  const heart = document.createElement("span");
-  heart.className = "heart";
-  heart.textContent = "♥";
-  livesLabel.appendChild(heart);
+  // ハートを単純に表示するだけ
+  for (let i = 0; i < lives; i++) {
+    const heart = document.createElement("span");
+    heart.className = "heart";  // CSSは単純なスタイルだけ使用
+    heart.textContent = "♥";
+    livesLabel.appendChild(heart);
+  }
 }
 
-}
 
 
 /* ===== ボール更新 ===== */
@@ -1094,21 +1133,26 @@ function updateBall(){
   /* ===== 左右 ===== */
   if (ballX >= limit && invincible <= 0) {
     ballVX *= -1.1;
-    invincible = 60;
-    sideHitFlashRight = 6;
-    sideHitFlash = 6;
+    invincible = 120;
+    sideHitFlashRight = 120;
+sideHitFlash = 120;
+
+
     hitSound();
 
     lives--;
     updateLivesDisplay();
+
+
     if (lives === 0) gameOverPending = true;
   }
 
   if (ballX <= -limit && invincible <= 0) {
     ballVX *= -1.1;
-    invincible = 60;
-    sideHitFlashLeft = 6;
-    sideHitFlash = 6;
+    invincible = 120;
+    sideHitFlashLeft = 120;
+sideHitFlash = 120;
+
     hitSound();
 
     lives--;
@@ -1144,7 +1188,7 @@ holes.forEach((o, i) => {
 
   if (dist < ballR + objR * 0.85) {
 
-    invincible = 60;
+    invincible = 120;
     lives--;
     updateLivesDisplay();
     tellDestroySound();
@@ -1388,6 +1432,7 @@ startBtn.onclick = () => {
   inputY = 0;
 
   chordPlaying = false;
+  sideHitFlash = 0;      // ← これが重要
 
   /* --- BGM開始（ユーザー操作内） --- */
   audioCtx.resume().then(() => {
