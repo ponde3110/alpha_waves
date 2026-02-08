@@ -95,7 +95,7 @@ html, body {
 
 #startBtn {
   position: fixed;
-  top:70%;
+  top:80%;
   left:50%;
   transform: translate(-50%,-50%);
   padding:12px 24px;
@@ -277,6 +277,110 @@ box-shadow:
   margin-right: 6px;
 }
 
+#ruleBtn {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 20;
+}
+
+
+#ruleOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+#rulePanel {
+  background: rgba(0,0,0,0.75);
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 18px;
+  padding: 20px;
+  max-width: 80vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: white;
+  position: relative;
+
+  /* ★ アニメーション初期状態 */
+  transform: scale(0.85);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* 表示時 */
+#ruleOverlay.show #rulePanel {
+  transform: scale(1);
+  opacity: 1;
+}
+
+
+#ruleClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: white;
+  cursor: pointer;
+}
+
+.ruleRows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ruleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ruleRow canvas,
+.ruleIcon {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.ruleText {
+  font-size: 15px;
+}
+
+#ruleQR,
+#ruleControl {
+  display: block;
+  width: 120px;                  /* ★ 同サイズ */
+  height: auto;
+  margin: 16px auto 0 auto;      /* ★ 中央寄せ */
+}
+
+#ruleControl {
+  margin-top: 35px;   /* ★ 少し離す */
+}
+
+.ruleRow:last-child {
+  justify-content: center;   /* ★ 中央寄せ */
+}
+
+.ruleRow:last-child .ruleText {
+  text-align: center;
+}
+
 
 </style>
 </head>
@@ -300,9 +404,44 @@ box-shadow:
   <div id="author">ponde3110&copy;</div>
   <button id="startBtn">START</button>
   <button id="muteBtn">🔊</button>
-  <img id="controlImg" src="control.png" alt="controls">
-  <img id="qrCode" src="QR.png" alt="QR code">
+ <button id="ruleBtn">?</button>
 </div>
+
+<div id="ruleOverlay">
+  <div id="rulePanel">
+
+    <button id="ruleClose">✕</button>
+
+    <div id="ruleList" class="ruleRows">
+
+      <div class="ruleRow">
+        <canvas id="ruleBall" width="80" height="80"></canvas>
+        <span class="ruleText">The Ball — Control it</span>
+      </div>
+
+      <div class="ruleRow">
+        <canvas id="ruleTell" width="80" height="80"></canvas>
+        <span class="ruleText">Dark Tell — Life down</span>
+      </div>
+
+      <div class="ruleRow">
+        <canvas id="ruleHatapie" width="80" height="80"></canvas>
+        <span class="ruleText">Hatapie Art — Life up</span>
+      </div>
+
+      <div class="ruleRow">
+        <span class="ruleText">(Every 50,000 pts → Life Up)</span>
+      </div>
+
+    </div>
+
+    <img src="control.png" id="ruleControl" alt="controls">
+    <img src="QR.png" id="ruleQR" alt="QR code">
+
+  </div>
+</div>
+
+
 
 <script>
 /* ===== Audio ===== */
@@ -328,9 +467,10 @@ let nextLifeScore = 50000;
 let sideHitFlashLeft = 0;
 let sideHitFlashRight = 0;
 
+let hatapieFlash = 0;   // ★ はたピー接触時の色変化用
+
 
 const muteBtn = document.getElementById("muteBtn");
-muteBtn.style.display = "none";   // ← トップ画面では非表示
 
 muteBtn.onclick = () => {
   muted = !muted;
@@ -508,11 +648,6 @@ const livesLabel = document.getElementById("lives");
 
 const startMessage = document.getElementById("startMessage");  // スタート時に表示 → 自動で消す
 
-const qrCode = document.getElementById("qrCode");
-const controlImg = document.getElementById("controlImg");
-
-qrCode.style.display = "block";       // ← 初期画面でQR表示
-controlImg.style.display = "block";  // ← 初期画面でcontrol表示
 
 
 let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
@@ -661,15 +796,16 @@ function spawnHatapie() {
 
 /* ===== 道 ===== */
 function roadCenter(y) {
-  return W()/2 + Math.sin((y+offset)*0.01)*80 + Math.sin((y+offset)*0.03)*30;
+  return W()/2
+    + Math.sin((y + offset) * 0.01) * 80
+    + Math.sin((y + offset) * 0.03) * 30;
 }
-
 
 function drawRoad() {
   const leftEdge = [];
   const rightEdge = [];
 
-  // 道の中心と幅
+  /* ===== 道の中心と幅 ===== */
   for (let y = 0; y <= H(); y += 2) {
     const cx = roadCenter(y);
     const t = y / H();
@@ -705,39 +841,42 @@ function drawRoad() {
     ctx.fillRect(lx, y, rx - lx, 2);
   }
 
+  /* ===== 道の縁（ヒット時は色だけ変える） ===== */
+  for (let i = 0; i < leftEdge.length; i++) {
+    const t = leftEdge[i].y / H();
+    const perspective = 0.1 + t * 1.0;
+    const alpha = 0.3 + 0.7 * perspective;
 
-// 道の縁（奥行き反映）
-for (let i = 0; i < leftEdge.length; i++) {
-  const t = leftEdge[i].y / H();
-  const perspective = 0.1 + t * 1.0;
-  let alpha = 0.3 + 0.7 * perspective; // 手前ほど濃く
+    /* --- 左縁 --- */
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = sideHitFlashLeft > 0
+      ? "rgba(154,135,44,0.45)"        // ヒット時（金色）
+      : `rgba(40,120,100,${alpha})`;  // 通常
 
-  // 左縁
-  ctx.lineWidth = sideHitFlashLeft > 0 ? 3 : 3;  // 光るときは細め、通常より少し細め
-  ctx.strokeStyle = sideHitFlashLeft > 0
-    ? `rgba(154,135,44,${0.25 + 0.3 * perspective})` // 金
-    : `rgba(40,120,100,${alpha})`;
-  ctx.beginPath();
-  ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
-  if (i < leftEdge.length - 1) ctx.lineTo(leftEdge[i + 1].x, leftEdge[i + 1].y);
-  ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(leftEdge[i].x, leftEdge[i].y);
+    if (i < leftEdge.length - 1) {
+      ctx.lineTo(leftEdge[i + 1].x, leftEdge[i + 1].y);
+    }
+    ctx.stroke();
 
-  // 右縁
-  ctx.lineWidth = sideHitFlashRight > 0 ? 3 : 3;
-  ctx.strokeStyle = sideHitFlashRight > 0
-    ? `rgba(154,135,44,${0.25 + 0.3 * perspective})`  // 金
-    : `rgba(40,120,100,${alpha})`;
-  ctx.beginPath();
-  ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
-  if (i < rightEdge.length - 1) ctx.lineTo(rightEdge[i + 1].x, rightEdge[i + 1].y);
-  ctx.stroke();
-}
+    /* --- 右縁 --- */
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = sideHitFlashRight > 0
+      ? "rgba(154,135,44,0.45)"        // ヒット時（金色）
+      : `rgba(40,120,100,${alpha})`;  // 通常
 
-// フラッシュを減算（短め 3フレーム）
-if (sideHitFlashLeft > 0) sideHitFlashLeft--;
-if (sideHitFlashRight > 0) sideHitFlashRight--;
+    ctx.beginPath();
+    ctx.moveTo(rightEdge[i].x, rightEdge[i].y);
+    if (i < rightEdge.length - 1) {
+      ctx.lineTo(rightEdge[i + 1].x, rightEdge[i + 1].y);
+    }
+    ctx.stroke();
+  }
 
-
+  /* ===== フラッシュ減算 ===== */
+  if (sideHitFlashLeft > 0) sideHitFlashLeft--;
+  if (sideHitFlashRight > 0) sideHitFlashRight--;
 
   /* ===== センターライン ===== */
   ctx.strokeStyle = "rgba(140,220,180,0.35)";
@@ -772,96 +911,78 @@ if (sideHitFlashRight > 0) sideHitFlashRight--;
   ctx.fillRect(0, 0, W(), H() * 0.1);
   ctx.restore();
 
-// 上から振ってくるオブジェを描画
-holes.forEach(o => {
-  if (o.y < 0 || o.y > H()) return;
+  /* ===== テル（上から落ちる物体） ===== */
+  holes.forEach(o => {
+    if (o.y < 0 || o.y > H()) return;
 
-  const t = o.y / H();
-  const perspective = 0.1 + t * 1.0;
+    const t = o.y / H();
+    const perspective = 0.1 + t * 1.0;
 
-  const cx = roadCenter(o.y) + o.xOffset;
+    const cx = roadCenter(o.y) + o.xOffset;
+    const cy = o.y + 6 * perspective;
 
-  // ★ 路面に接地させる補正（少し下へ）
-  const cy = o.y + 6 * perspective;
+    const r = o.r * perspective;
+    const h = o.h * perspective;
 
-  const r = o.r * perspective;
-  const h = o.h * perspective;
+    ctx.fillStyle = `rgba(0,0,0,${0.35 * perspective})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + h, r * 1.1, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-  /* ===== 路面影 ===== */
-  ctx.fillStyle = `rgba(0,0,0,${0.35 * perspective})`;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + h, r * 1.1, r * 0.55, 0, 0, Math.PI * 2);
-  ctx.fill();
+    const topGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+    topGrad.addColorStop(0, "#442060");
+    topGrad.addColorStop(1, "#140018");
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
 
-  /* ===== 本体上面 ===== */
-  const topGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
-  topGrad.addColorStop(0, "#442060");
-  topGrad.addColorStop(1, "#140018");
+    const sideGrad = ctx.createLinearGradient(cx, cy, cx, cy + h);
+    sideGrad.addColorStop(0, "rgba(80,0,120,0.8)");
+    sideGrad.addColorStop(1, "rgba(0,0,0,0.95)");
+    ctx.fillStyle = sideGrad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + h, r, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.fillStyle = topGrad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.strokeStyle = `rgba(190,130,255,${0.3 + 0.4 * perspective})`;
+    ctx.lineWidth = 2 * perspective;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  });
 
-  /* ===== 側面 ===== */
-  const sideGrad = ctx.createLinearGradient(cx, cy, cx, cy + h);
-  sideGrad.addColorStop(0, "rgba(80,0,120,0.8)");
-  sideGrad.addColorStop(1, "rgba(0,0,0,0.95)");
+  /* ===== はたピー ===== */
+  hatapies.forEach((o, index) => {
+    if (o.y < 0 || o.y > H()) return;
 
-  ctx.fillStyle = sideGrad;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + h, r, r * 0.55, 0, 0, Math.PI * 2);
-  ctx.fill();
+    const t = o.y / H();
+    const p = 0.1 + t * 1.0;
 
-  /* ===== 接地縁ハイライト ===== */
-  ctx.strokeStyle = `rgba(190,130,255,${0.3 + 0.4 * perspective})`;
-  ctx.lineWidth = 2 * perspective;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-});
+    const cx = roadCenter(o.y) + o.xOffset;
+    const floatY = o.y + Math.sin(Date.now()/500 + index) * 6;
 
+    const alpha = 0.5 + 0.5 * Math.sin(Date.now()/400 + index);
+    const r = o.r * p;
 
-// ===== はたピー（下から上がる物体） =====
-hatapies.forEach((o, index) => {
-  if (o.y < 0 || o.y > H()) return;
+    const glow = ctx.createRadialGradient(cx, floatY, 1, cx, floatY, r);
+    glow.addColorStop(0, `rgba(255,240,245,${alpha})`);
+    glow.addColorStop(0.3, `rgba(255,182,193,${alpha})`);
+    glow.addColorStop(0.6, `rgba(255,105,180,${alpha})`);
+    glow.addColorStop(0.85, `rgba(219,112,147,${alpha * 0.8})`);
+    glow.addColorStop(1, `rgba(199,21,133,0)`);
 
-  const t = o.y / H();
-  const p = 0.1 + t * 1.0;
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, floatY, r, 0, Math.PI * 2);
+    ctx.fill();
 
-  const cx = roadCenter(o.y) + o.xOffset;
-  const floatY = o.y + Math.sin(Date.now()/500 + index) * 6;
-
-  // 輝き（淡濃）
-  const alpha = 0.5 + 0.5 * Math.sin(Date.now()/400 + index);
-
-  const r = o.r * p;
-
-  // 美しいピンク系グラデーション
-  const glow = ctx.createRadialGradient(cx, floatY, 1, cx, floatY, r);
-  glow.addColorStop(0, `rgba(255,240,245,${alpha})`); // ほぼ白のピンク
-  glow.addColorStop(0.3, `rgba(255,182,193,${alpha})`); // 薄いピンク
-  glow.addColorStop(0.6, `rgba(255,105,180,${alpha})`); // ホットピンク
-  glow.addColorStop(0.85, `rgba(219,112,147,${alpha * 0.8})`); // 少し濃いピンク
-  glow.addColorStop(1, `rgba(199,21,133,0)`); // 外側は透明で自然に消える
-
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(cx, floatY, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 外枠も光らせる（柔らかく）
-  ctx.strokeStyle = `rgba(255,105,180,${0.5 * p * alpha})`;
-  ctx.lineWidth = 1.5 * p;
-  ctx.beginPath();
-  ctx.arc(cx, floatY, r, 0, Math.PI * 2);
-  ctx.stroke();
-});
-
-
-
-
-
+    ctx.strokeStyle = `rgba(255,105,180,${0.5 * p * alpha})`;
+    ctx.lineWidth = 1.5 * p;
+    ctx.beginPath();
+    ctx.arc(cx, floatY, r, 0, Math.PI * 2);
+    ctx.stroke();
+  });
 }
 
 
@@ -923,11 +1044,19 @@ if (sideHitFlash > 0) {
         cy,
         r * 1.1
       );
-  g.addColorStop(0.0, "#e6d98a");   // ハイライト
-  g.addColorStop(0.25, "#9a872c");  // ダークゴールド
-  g.addColorStop(0.55, "#6f6220");  // かなり暗い影
-  g.addColorStop(0.8, "#a89332");   // 戻り光
-  g.addColorStop(1.0, "#ff8c1a");   // 外周オレンジ
+
+// ★ はたピー時だけ少し濃く
+const boost = hatapieFlash > 0 ? 1.15 : 1.0;  // ★ 明度アップ
+const vivid = hatapieFlash > 0 ? 1.2  : 1.0;  // ★ 彩度アップ
+const cool  = hatapieFlash > 0 ? 0.75 : 1.0;  // ★ 青を強く抑える
+
+g.addColorStop(0.0, `rgb(${230*boost*vivid},${217*boost*vivid},${138*boost*cool})`);
+g.addColorStop(0.25,`rgb(${154*boost*vivid},${135*boost*vivid},${44*boost*cool})`);
+g.addColorStop(0.55,`rgb(${111*boost*vivid},${98*boost*vivid}, ${32*boost*cool})`);
+g.addColorStop(0.8, `rgb(${168*boost*vivid},${147*boost*vivid},${50*boost*cool})`);
+g.addColorStop(1.0, `rgb(${255*boost*vivid},${140*boost*vivid},${26*boost*cool})`);
+
+
 
     }
 
@@ -1009,7 +1138,6 @@ function updateGameOver() {
   clearTimeout(chordTimeout);
   isGameOver = true;
   gameoverLabel.style.display = "block";
-  muteBtn.style.display = "block";   // ← GAME OVER でも表示
 
 
   hiScore = Math.max(hiScore, score);
@@ -1027,9 +1155,7 @@ function updateGameOver() {
     title.style.display = "block";
     author.style.display = "block";
     startBtn.style.display = "block";
-    qrCode.style.display = "block";
-
-    controlImg.style.display = "block";   // ← トップ復帰で再表示
+    ruleBtn.style.display = "block";
 
 
     ballX = 0;
@@ -1135,8 +1261,7 @@ function updateBall(){
     ballVX *= -1.1;
     invincible = 120;
     sideHitFlashRight = 120;
-sideHitFlash = 120;
-
+    sideHitFlash = 120;
 
     hitSound();
 
@@ -1151,7 +1276,7 @@ sideHitFlash = 120;
     ballVX *= -1.1;
     invincible = 120;
     sideHitFlashLeft = 120;
-sideHitFlash = 120;
+    sideHitFlash = 120;
 
     hitSound();
 
@@ -1188,7 +1313,8 @@ holes.forEach((o, i) => {
 
   if (dist < ballR + objR * 0.85) {
 
-    invincible = 120;
+      invincible = 120;
+      sideHitFlash = 120;   // ★ これを追加（半透明化）
     lives--;
     updateLivesDisplay();
     tellDestroySound();
@@ -1223,6 +1349,7 @@ hatapies.forEach((o, i) => {
 
   if (dist < ballR + objR * 0.85) {
     // ===== 接触時の処理 =====
+    hatapieFlash = 120;   // ★ 1秒だけ色を濃く
     if (lives < maxLives) {
       lives++;                  // ライフ増加（上限5）
       updateLivesDisplay();     // ライフ表示更新
@@ -1238,21 +1365,23 @@ hatapies.forEach((o, i) => {
       }
     }
 
-    // 接触済みはたピーを削除
-    hatapies.splice(i, 1);
-  }
+  // 接触済みはたピーを削除
+  hatapies.splice(i, 1);
+}
 });
 
+/* ===== はたピー色変化カウントダウン ===== */
+if (hatapieFlash > 0) hatapieFlash--;
 
+/* ===== クランプ ===== */
+if (ballX >  limit) ballX =  limit;
+if (ballX < -limit) ballX = -limit;
+if (ballY < 20)     ballY = 20;
+if (ballY > H() - 20) ballY = H() - 20;
 
+/* ===== 無敵時間カウント ===== */
+if (invincible > 0) invincible--;
 
-  /* ===== クランプ ===== */
-  if (ballX >  limit) ballX =  limit;
-  if (ballX < -limit) ballX = -limit;
-  if (ballY < 20)     ballY = 20;
-  if (ballY > H() - 20) ballY = H() - 20;
-
-  if (invincible > 0) invincible--;
 }
 
 
@@ -1291,7 +1420,7 @@ const tellLevel = Math.min(5, 1 + score / 100000); // 20000なら地獄
 
 if (
   gameStarted &&
-  score >= 10000 &&           // ← 1万点超えてから解禁
+  score >= 7500 &&            // ★ 7500点超えてから解禁
   Math.random() < 0.0010 * tellLevel
 ) {
   spawnHole();
@@ -1399,14 +1528,15 @@ animateTitle();
 /* ===== STARTボタン（完成版） ===== */
 startBtn.onclick = () => {
 
+  /* --- ジャイロ有効化（スマホ） --- */
+  enableDeviceOrientation();
+
+  ruleBtn.style.display = "none";
+
   /* --- UIを非表示／表示 --- */
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
-
-  qrCode.style.display = "none";      // プレイ中は非表示
-  controlImg.style.display = "none";  // 操作説明を消す
-  muteBtn.style.display = "block";    // ゲーム中のみ表示
 
   /* --- スリープ防止（対応端末のみ） --- */
   if ('wakeLock' in navigator) {
@@ -1439,8 +1569,8 @@ startBtn.onclick = () => {
     playChord();
   });
 
-  /* --- ジャイロ有効化（スマホ） --- */
-  enableDeviceOrientation();
+
+
 
   // ===== スタートメッセージ表示 =====
 startMessage.style.opacity = "1";
@@ -1651,6 +1781,137 @@ function hatapiesSound() {
 }
 
 
+// ===== ルールボタン =====
+const ruleBtn = document.getElementById("ruleBtn");
+
+ruleBtn.onclick = () => {
+  alert("ルール画面を開きます");
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const ruleBtn = document.getElementById("ruleBtn");
+  const ruleOverlay = document.getElementById("ruleOverlay");
+  const ruleClose = document.getElementById("ruleClose");
+
+  if (!ruleBtn || !ruleOverlay || !ruleClose) {
+    console.warn("rule UI not ready");
+    return;
+  }
+
+ruleBtn.onclick = () => {
+  ruleOverlay.style.display = "flex";
+  requestAnimationFrame(() => {
+    ruleOverlay.classList.add("show");
+  });
+};
+
+ruleClose.onclick = () => {
+  ruleOverlay.classList.remove("show");
+  setTimeout(() => {
+    ruleOverlay.style.display = "none";
+  }, 300);
+};
+
+
+
+});
+
+
+/* =========================
+   ルール画面用 Canvas 描画
+   ========================= */
+
+function drawRuleBall() {
+  const c = document.getElementById("ruleBall");
+  const ctx = c.getContext("2d");
+
+  const cx = 40, cy = 40, r = 22;
+  const perspective = 1;
+
+  const g = ctx.createRadialGradient(
+    cx - 5 * perspective,
+    cy - 5 * perspective,
+    2 * perspective,
+    cx,
+    cy,
+    r * 1.1
+  );
+  g.addColorStop(0.0, "#e6d98a");
+  g.addColorStop(0.25, "#9a872c");
+  g.addColorStop(0.55, "#6f6220");
+  g.addColorStop(0.8, "#a89332");
+  g.addColorStop(1.0, "#ff8c1a");
+
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawRuleTell() {
+  const c = document.getElementById("ruleTell");
+  const ctx = c.getContext("2d");
+
+  const cx = 40, cy = 38, r = 18, h = 14;
+
+  // 影
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + h + 4, r * 1.1, r * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 上面
+  const topGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+  topGrad.addColorStop(0, "#442060");
+  topGrad.addColorStop(1, "#140018");
+
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 側面
+  const sideGrad = ctx.createLinearGradient(cx, cy, cx, cy + h);
+  sideGrad.addColorStop(0, "rgba(80,0,120,0.8)");
+  sideGrad.addColorStop(1, "rgba(0,0,0,0.95)");
+
+  ctx.fillStyle = sideGrad;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + h, r, r * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawRuleHatapie() {
+  const c = document.getElementById("ruleHatapie");
+  const ctx = c.getContext("2d");
+
+  const cx = 40, cy = 40, r = 20;
+  const alpha = 0.85;
+
+  const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, r);
+  glow.addColorStop(0, `rgba(255,240,245,${alpha})`);
+  glow.addColorStop(0.3, `rgba(255,182,193,${alpha})`);
+  glow.addColorStop(0.6, `rgba(255,105,180,${alpha})`);
+  glow.addColorStop(0.85, `rgba(219,112,147,${alpha * 0.8})`);
+  glow.addColorStop(1, `rgba(199,21,133,0)`);
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = `rgba(255,105,180,${0.6})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/* ===== 一度だけ描画 ===== */
+drawRuleBall();
+drawRuleTell();
+drawRuleHatapie();
 
 
 </script>
