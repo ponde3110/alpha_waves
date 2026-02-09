@@ -502,7 +502,7 @@ box-shadow:
 
       <div class="ruleRow">
         <canvas id="ruleHatapie" width="80" height="80"></canvas>
-        <span class="ruleText">Hata Piee — Life ↑</span>
+        <span class="ruleText">Vata Piee — Life ↑</span>
       </div>
 
 
@@ -733,7 +733,7 @@ let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
 let lives = 3, invincible = 0, isGameOver = false, gameStarted = false, scoreStarted = false;
 const roadWidth = 150;
 let ballDestroyed = false, ballScale = 1;
-let ballX=0, ballY=H()*0.5, ballVX=0, ballVY=0, inputX=0, inputY=0;
+let ballX=0, ballY=H()*0.6, ballVX=0, ballVY=0, inputX=0, inputY=0;
 const BALL_R = 14;
 const keys = {};
 
@@ -1072,7 +1072,7 @@ function drawBall() {
   if (isGameOver) return;
 
   /* ===== 球の中心座標 ===== */
-  const cy = gameStarted ? ballY : H() * 0.5;               // Y座標
+  const cy = gameStarted ? ballY : H() * 0.6;               // Y座標
   const cx = roadCenter(cy) + (gameStarted ? ballX : 0);    // 道の中央に配置
   const t = cy / H();                                       // 遠近係数
   const perspective = 0.1 + t * 1.0;                        // 0.1〜1.1
@@ -1230,6 +1230,13 @@ function updateGameOver() {
     holes.length = 0;   // ← テルを全消去
     hatapies.length = 0;
 
+  // ★★★ 追加：無敵・透過・フラッシュを完全リセット ★★★
+  invincible = 0;
+  sideHitFlash = 0;
+  sideHitFlashLeft = 0;
+  sideHitFlashRight = 0;
+  hatapieFlash = 0;
+
     gameoverLabel.style.display = "none";
     title.style.display = "block";
     author.style.display = "block";
@@ -1238,7 +1245,7 @@ function updateGameOver() {
 
 
     ballX = 0;
-    ballY = H() * 0.5;
+    ballY = H() * 0.6;
     ballVX = 0;
     ballVY = 0;
     inputX = 0;
@@ -1617,6 +1624,13 @@ startBtn.onclick = () => {
   title.style.display = "none";
   author.style.display = "none";
 
+  // ★ 念押し初期化
+  invincible = 0;
+  sideHitFlash = 0;
+  sideHitFlashLeft = 0;
+  sideHitFlashRight = 0;
+  hatapieFlash = 0;
+
   /* --- スリープ防止（対応端末のみ） --- */
   if ('wakeLock' in navigator) {
     enableWakeLock();
@@ -1633,7 +1647,7 @@ startBtn.onclick = () => {
   nextLifeScore = 50000;
 
   ballX = 0;
-  ballY = H() * 0.5;
+  ballY = H() * 0.6;
   ballVX = 0;   // ★ 少し右なら0.4
   ballVY = 0;     // ★ 上昇しない
 
