@@ -281,8 +281,8 @@ box-shadow:
   position: fixed;
   right: 10px;
   bottom: 10px;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255,255,255,0.2);
   color: #fff;
@@ -403,6 +403,7 @@ box-shadow:
   width: 120px;                  /* ★ 同サイズ */
   height: auto;
   margin: 16px auto 0 auto;      /* ★ 中央寄せ */
+  border-radius: 14px;
 }
 
 #ruleControl {
@@ -430,6 +431,30 @@ box-shadow:
 .ruleCenter .ruleText {
   text-align: center;
 }
+
+#lives {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.heart {
+  font-size: 22px;
+  color: inherit;
+  display: inline-block;
+  position: relative;
+
+  /* 輪郭を作って形を強調 */
+  text-shadow:
+    1px 0 0 rgba(0,0,0,0.45),
+   -1px 0 0 rgba(0,0,0,0.45),
+    0 1px 0 rgba(0,0,0,0.45),
+    0 -1px 0 rgba(0,0,0,0.45),
+
+    0 2px 0 rgba(255,255,255,0.8),   /* 上光 */
+    0 4px 6px rgba(0,0,0,0.55);      /* 浮遊影 */
+}
+
 
 
 </style>
@@ -485,7 +510,7 @@ box-shadow:
 
     <img src="control.png" id="ruleControl" alt="controls">
       <div class="ruleRow ruleCenter">
-      <span class="ruleText">30° up, center; 50k, Life Up</span>
+      <span class="ruleText">30°, Center & Every 50k, Life ↑</span>
       </div>
     <img src="QR.png" id="ruleQR" alt="QR code">
       <div class="ruleRow ruleCenter">
