@@ -11,22 +11,21 @@
     user-scalable=no,
     viewport-fit=cover
   ">
+
 <link rel="manifest" href="manifest.json">
+
 <title>Flow with the α-waves</title>
 
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 
 <style>
-
 html, body {
   margin: 0;
   padding: 0;
+  overflow: hidden;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  touch-action: none;
 }
-
 
 #screen {
   position: fixed;
@@ -472,8 +471,7 @@ box-shadow:
     0 4px 6px rgba(0,0,0,0.55);      /* 浮遊影 */
 }
 
-/* ===== スマホ横向き補正 ===== */
-body.landscape #screen {
+body.landscape #screen { /* 縦保険 */
   transform: rotate(90deg);
   transform-origin: center center;
   width: 100vh;
@@ -482,19 +480,6 @@ body.landscape #screen {
   top: 50%;
   left: 50%;
   translate: -50% -50%;
-}
-
-/* ===== PC保険（必ず最後） ===== */
-@media (hover: hover) and (pointer: fine) {
-  body.landscape #screen {
-    transform: none;
-    width: 100%;
-    height: 100%;
-    position: fixed;
-    top: 0;
-    left: 0;
-    translate: none;
-  }
 }
 
 
@@ -563,42 +548,6 @@ body.landscape #screen {
 
 
 <script>
-
-/* ===== 縦固定（スマホのみ） ===== */
-
-function lockPortrait() {
-  if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock("portrait").catch(() => {});
-  }
-}
-
-function isMobile() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function checkOrientation() {
-  if (!isMobile()) {
-    // PCでは絶対に回転させない
-    document.body.classList.remove("landscape");
-    return;
-  }
-
-  // スマホのみ：横向きなら landscape を付与
-  document.body.classList.toggle(
-    "landscape",
-    window.innerWidth > window.innerHeight
-  );
-}
-
-window.addEventListener("resize", checkOrientation);
-checkOrientation();
-
-// ユーザー操作後に縦固定（対応端末のみ）
-document.addEventListener("click", lockPortrait, { once: true });
-document.addEventListener("touchstart", lockPortrait, { once: true });
-
-
-
 /* ===== Audio ===== */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioStarted = false;
@@ -1690,9 +1639,6 @@ animateTitle();
 /* ===== STARTボタン（完成版） ===== */
 startBtn.onclick = () => {
 
-　/* ===== ① 画面を縦固定（対応端末のみ） ===== */
-  lockPortrait();   // ← ★ ここが今回の追加点（最重要）
-
   /* --- ジャイロ有効化（スマホ） --- */
   enableDeviceOrientation();
 
@@ -1740,6 +1686,9 @@ startBtn.onclick = () => {
   audioCtx.resume().then(() => {
     playChord();
   });
+
+
+
 
   // ===== スタートメッセージ表示 =====
 startMessage.style.opacity = "1";
