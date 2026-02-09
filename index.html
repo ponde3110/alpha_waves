@@ -303,8 +303,8 @@ box-shadow:
 }
 
 #rulePanel {
-  background: rgba(0,0,0,0.75);
-  border: 2px solid rgba(255,255,255,0.5);
+    background: rgba(140, 200, 160, 0.60);   /* 0.80なら濃 */
+  border: 1.5px solid rgba(255,255,255,0.28);
   border-radius: 18px;
   padding: 20px;
   max-width: 80vw;
@@ -330,12 +330,46 @@ box-shadow:
   position: absolute;
   top: 10px;
   right: 10px;
-  background: none;
-  border: none;
-  font-size: 22px;
+
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.25);
+
+  font-size: 12px;
+  font-weight: 600;
   color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   cursor: pointer;
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  transition: 
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
 }
+
+/* ✨ ホバーで発光 */
+#ruleClose:hover {
+  background: rgba(255,255,255,0.18);
+  box-shadow: 0 0 12px rgba(255,255,255,0.35);
+  transform: scale(1.08);
+}
+
+/* 👆 押したとき */
+#ruleClose:active {
+  transform: scale(0.94);
+  box-shadow: 0 0 6px rgba(255,255,255,0.2);
+}
+
 
 .ruleRows {
   display: flex;
@@ -346,8 +380,9 @@ box-shadow:
 .ruleRow {
   display: flex;
   align-items: center;
-  gap: 12px;
   flex-wrap: wrap;
+  text-align: center;
+  width: 100%;
 }
 
 .ruleRow canvas,
@@ -359,6 +394,7 @@ box-shadow:
 
 .ruleText {
   font-size: 15px;
+  display: inline-block;
 }
 
 #ruleQR,
@@ -370,7 +406,13 @@ box-shadow:
 }
 
 #ruleControl {
-  margin-top: 35px;   /* ★ 少し離す */
+  margin-top: 20px; /* ★ 少し離す */
+  margin-bottom: 5px;
+}
+
+#ruleQR {
+  margin-top: 30px; /* ★ 少し離す */
+  margin-bottom: 5px;
 }
 
 .ruleRow:last-child {
@@ -378,6 +420,14 @@ box-shadow:
 }
 
 .ruleRow:last-child .ruleText {
+  text-align: center;
+}
+
+.ruleCenter {
+  justify-content: center;
+}
+
+.ruleCenter .ruleText {
   text-align: center;
 }
 
@@ -416,28 +466,31 @@ box-shadow:
 
       <div class="ruleRow">
         <canvas id="ruleBall" width="80" height="80"></canvas>
-        <span class="ruleText">The Ball — Control it</span>
+        <span class="ruleText">The Ball — Control</span>
       </div>
 
       <div class="ruleRow">
         <canvas id="ruleTell" width="80" height="80"></canvas>
-        <span class="ruleText">Dark Tell — Life down</span>
+        <span class="ruleText">Dark Telu — Life ↓</span>
       </div>
 
       <div class="ruleRow">
         <canvas id="ruleHatapie" width="80" height="80"></canvas>
-        <span class="ruleText">Hatapie Art — Life up</span>
+        <span class="ruleText">Hatapiee — Life ↑</span>
       </div>
 
-      <div class="ruleRow">
-        <span class="ruleText">(Every 50,000 pts → Life Up)</span>
-      </div>
+
 
     </div>
 
     <img src="control.png" id="ruleControl" alt="controls">
+      <div class="ruleRow ruleCenter">
+      <span class="ruleText">30° up, center; 50k, Life Up</span>
+      </div>
     <img src="QR.png" id="ruleQR" alt="QR code">
-
+      <div class="ruleRow ruleCenter">
+      <span class="ruleText">Scan to Share via QR</span>
+      </div>
   </div>
 </div>
 
