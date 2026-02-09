@@ -2,18 +2,25 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport"
+      content="width=device-width,
+               height=device-height,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
 <title>Flow with the α-waves</title>
 
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 
 <style>
+
 html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  touch-action: none;
 }
 
 #screen {
@@ -381,21 +388,25 @@ box-shadow:
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  text-align: center;
+-  text-align: center;
++  text-align: left;          /* ← 左揃え */
   width: 100%;
   gap:12px;
++  padding-left: max(16px, 10vw);  /* ← ★ 左余白を少し詰める */
++  box-sizing: border-box;
 }
 
 .ruleRow canvas,
 .ruleIcon {
   width: 64px;
   flex-shrink: 0;
-  text-align: center;
+-  text-align: center;
 }
 
 .ruleText {
   font-size: 15px;
-  display: inline-block;
+-  display: inline-block;
++  display: block;   /* ← 行頭を安定させる */
 }
 
 #ruleQR,
@@ -502,7 +513,7 @@ box-shadow:
 
       <div class="ruleRow">
         <canvas id="ruleHatapie" width="80" height="80"></canvas>
-        <span class="ruleText">Vata Pieei — Life ↑</span>
+        <span class="ruleText">Art Vata P — Life ↑</span>
       </div>
 
 
@@ -523,6 +534,30 @@ box-shadow:
 
 
 <script>
+
+/* ===== 縦固定 ===== */
+function lockPortrait() {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("portrait").catch(() => {});
+  }
+}
+
+function checkOrientation() {
+  document.body.classList.toggle(
+    "landscape",
+    window.innerWidth > window.innerHeight
+  );
+}
+
+window.addEventListener("resize", checkOrientation);
+checkOrientation();
+
+
+// ユーザー操作後でないと効かない端末があるため
+document.addEventListener("click", lockPortrait, { once: true });
+document.addEventListener("touchstart", lockPortrait, { once: true });
+
+
 /* ===== Audio ===== */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioStarted = false;
@@ -1614,6 +1649,9 @@ animateTitle();
 /* ===== STARTボタン（完成版） ===== */
 startBtn.onclick = () => {
 
+　/* ===== ① 画面を縦固定（対応端末のみ） ===== */
+  lockPortrait();   // ← ★ ここが今回の追加点（最重要）
+
   /* --- ジャイロ有効化（スマホ） --- */
   enableDeviceOrientation();
 
@@ -1661,9 +1699,6 @@ startBtn.onclick = () => {
   audioCtx.resume().then(() => {
     playChord();
   });
-
-
-
 
   // ===== スタートメッセージ表示 =====
 startMessage.style.opacity = "1";
