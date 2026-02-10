@@ -482,6 +482,10 @@ body.landscape #screen { /* 縦保険 */
   translate: -50% -50%;
 }
 
+#screen { /* 全画面保険 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
 </style>
 </head>
@@ -2030,6 +2034,22 @@ function drawRuleHatapie() {
 drawRuleBall();
 drawRuleTell();
 drawRuleHatapie();
+
+
+// ===== 全画面 =====
+function enterFullscreen() {
+  const el = document.documentElement;
+
+  if (el.requestFullscreen) {
+    el.requestFullscreen();
+  } else if (el.webkitRequestFullscreen) {
+    el.webkitRequestFullscreen();
+  }
+}
+
+// ユーザー操作後のみ許可される
+document.addEventListener("click", enterFullscreen, { once: true });
+document.addEventListener("touchstart", enterFullscreen, { once: true });
 
 
 </script>
