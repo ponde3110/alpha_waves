@@ -11,6 +11,9 @@
     user-scalable=no,
     viewport-fit=cover
   ">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="α-waves">
 
 <link rel="manifest" href="manifest.json">
 
@@ -768,6 +771,7 @@ let tiltInputX = 0, tiltInputY = 0;
 
 
 function handleOrientation(e) {
+  console.log("gyro:", e.gamma, e.beta);
   let x = e.gamma || 0; // 左右の傾き
   let y = e.beta  || 0; // 前後の傾き
 
@@ -791,30 +795,30 @@ function handleOrientation(e) {
 
 function enableDeviceOrientation() {
 
-  // PC除外
-  if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    console.log("PC detected: gyro disabled");
+  if (typeof DeviceOrientationEvent === "undefined") {
+    console.log("DeviceOrientation not supported");
     return;
   }
 
-  // iOS
-  if (
-    typeof DeviceOrientationEvent !== "undefined" &&
-    typeof DeviceOrientationEvent.requestPermission === "function"
-  ) {
+  // iOS（iPhone / iPad 共通）
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
       .then(state => {
         if (state === "granted") {
           window.addEventListener("deviceorientation", handleOrientation);
+          console.log("gyro enabled (iOS)");
         }
       })
-      .catch(console.error);
-
+      .catch(err => {
+        console.error("gyro permission error", err);
+      });
   } else {
-    // Android
+    // Android / その他
     window.addEventListener("deviceorientation", handleOrientation);
+    console.log("gyro enabled");
   }
 }
+
 
 
 
