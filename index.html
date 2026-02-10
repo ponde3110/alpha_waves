@@ -28,13 +28,10 @@ html, body {
 }
 
 #screen {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100%;      /* 100vw → 100% に変更 */
-  height: 100%;     /* 100vh → 100% に変更 */
-  overflow: hidden;
+  width: 100%;
+  height: 100svh;   /* ← これが超重要 */
 }
+
 
 #hud {
   position:fixed;
@@ -2027,22 +2024,6 @@ function drawRuleHatapie() {
 drawRuleBall();
 drawRuleTell();
 drawRuleHatapie();
-
-
-// ===== 全画面 =====
-function enterFullscreen() {
-  const el = document.documentElement;
-
-  if (el.requestFullscreen) {
-    el.requestFullscreen();
-  } else if (el.webkitRequestFullscreen) {
-    el.webkitRequestFullscreen();
-  }
-}
-
-// ユーザー操作後のみ許可される
-document.addEventListener("click", enterFullscreen, { once: true });
-document.addEventListener("touchstart", enterFullscreen, { once: true });
 
 
 </script>
