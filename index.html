@@ -471,34 +471,21 @@ box-shadow:
     0 4px 6px rgba(0,0,0,0.55);      /* 浮遊影 */
 }
 
-
-/* ===== ゲーム画面（共通・唯一） ===== */
-#screen {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-
-  /* iPhoneノッチ・セーフエリア対応 */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* ===== スマホ横向き時のみ縦ゲームを維持 ===== */
-body.mobile.landscape #screen {
+body.landscape #screen { /* 縦保険 */
   transform: rotate(90deg);
   transform-origin: center center;
-
   width: 100vh;
   height: 100vw;
-
+  position: fixed;
   top: 50%;
   left: 50%;
   translate: -50% -50%;
 }
 
-
+#screen { /* 全画面保険 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
 </style>
 </head>
@@ -565,30 +552,6 @@ body.mobile.landscape #screen {
 
 
 <script>
-
-  // ===== デバイス判定 =====
-const isMobile =
-  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-if (isMobile) {
-  document.body.classList.add("mobile");
-}
-
-// ===== 向き判定 =====
-function updateOrientationClass() {
-  if (!isMobile) return; // ★ PCは何もしない
-
-  if (window.innerWidth > window.innerHeight) {
-    document.body.classList.add("landscape");
-  } else {
-    document.body.classList.remove("landscape");
-  }
-}
-
-updateOrientationClass();
-window.addEventListener("resize", updateOrientationClass);
-
-
 /* ===== Audio ===== */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioStarted = false;
@@ -775,73 +738,14 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  const isMobile =
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  // ★ 実際に見えているサイズを使う
-  const vw = window.visualViewport
-    ? window.visualViewport.width
-    : window.innerWidth;
-
-  const vh = window.visualViewport
-    ? window.visualViewport.height
-    : window.innerHeight;
-
-  if (isMobile) {
-    // ===== スマホ / iPad：常に縦canvas =====
-    const shortSide = Math.min(vw, vh);
-    const longSide  = Math.max(vw, vh);
-
-    canvas.width  = shortSide;
-    canvas.height = longSide;
-  } else {
-    // ===== PC =====
-    canvas.width  = vw;
-    canvas.height = vh;
-  }
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = w;
+  canvas.height = h;
 }
 
-let resizeLock = false;
-
-function handleRotate() {
-  if (resizeLock) return;
-  resizeLock = true;
-
-  let lastW = 0;
-  let lastH = 0;
-  let stableCount = 0;
-
-  function check() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-
-    if (w === lastW && h === lastH) {
-      stableCount++;
-    } else {
-      stableCount = 0;
-      lastW = w;
-      lastH = h;
-    }
-
-    resize(); // ← あなたの既存 resize()
-
-    if (stableCount >= 3) {
-      resizeLock = false;
-      return;
-    }
-
-    requestAnimationFrame(check);
-  }
-
-  requestAnimationFrame(check);
-}
-
-window.addEventListener("orientationchange", handleRotate);
-window.addEventListener("resize", handleRotate);
-
-// 初回だけ
 resize();
-
+addEventListener("resize", resize);
 
 const W = () => canvas.width;
 const H = () => canvas.height;
@@ -2146,20 +2050,6 @@ function enterFullscreen() {
 // ユーザー操作後のみ許可される
 document.addEventListener("click", enterFullscreen, { once: true });
 document.addEventListener("touchstart", enterFullscreen, { once: true });
-
-
-/* ===== 向き判定（class 付与 ===== */
-function updateOrientationClass() {
-  if (window.innerWidth > window.innerHeight) {
-    document.body.classList.add("landscape");
-  } else {
-    document.body.classList.remove("landscape");
-  }
-}
-
-window.addEventListener("resize", updateOrientationClass);
-window.addEventListener("orientationchange", updateOrientationClass);
-updateOrientationClass();
 
 
 </script>
