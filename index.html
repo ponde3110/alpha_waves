@@ -775,17 +775,22 @@ const keys = {};
 // ===== スマホ傾き操作 =====
 let tiltInputX = 0, tiltInputY = 0;
 
+let baseGamma = null;
+let baseBeta = null;
+
+
 function handleOrientation(e) {
 
-  // ★ PC対策：値が無い場合は何もしない
-  if (e.beta == null || e.gamma == null) {
-    return;
+  if (e.beta == null || e.gamma == null) return;
+
+  // ★ 初回だけ基準角度を保存
+  if (baseGamma === null) {
+    baseGamma = e.gamma;
+    baseBeta  = e.beta;
   }
 
-  let x = e.gamma;
-  let y = e.beta;
-
-  y -= 30;
+  let x = e.gamma - baseGamma;
+  let y = e.beta  - baseBeta;
 
   const angle = (screen.orientation && screen.orientation.angle) || 0;
 
@@ -806,6 +811,7 @@ function handleOrientation(e) {
   tiltInputX = x * sensitivity;
   tiltInputY = y * sensitivity;
 }
+
 
 
 /* ===== 星 ===== */
@@ -1621,6 +1627,10 @@ animateTitle();
 
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
+
+  baseGamma = null; // 今の角度をニュートラル
+  baseBeta = null;
+
 
   /* ===== ① 画面を縦固定 ===== */
   lockPortrait();
