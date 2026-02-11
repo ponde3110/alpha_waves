@@ -778,40 +778,27 @@ let tiltInputX = 0, tiltInputY = 0;
 let baseGamma = null;
 let baseBeta = null;
 
-
 function handleOrientation(e) {
 
   if (e.beta == null || e.gamma == null) return;
 
-  // ★ 初回だけ基準角度を保存
   if (baseGamma === null) {
     baseGamma = e.gamma;
     baseBeta  = e.beta;
+    return;
   }
 
-  let x = e.gamma - baseGamma;
-  let y = e.beta  - baseBeta;
+  let rawX = e.gamma - baseGamma;
+  let rawY = e.beta  - baseBeta;
 
-  const angle = (screen.orientation && screen.orientation.angle) || 0;
-
-  switch (angle) {
-    case 90:
-      [x, y] = [y, -x];
-      break;
-    case 180:
-      x = -x;
-      y = -y;
-      break;
-    case 270:
-      [x, y] = [-y, x];
-      break;
-  }
+  // ★ 90度時計回り補正（iPad最適）
+  let x = rawY;
+  let y = -rawX;
 
   const sensitivity = 0.04;
   tiltInputX = x * sensitivity;
   tiltInputY = y * sensitivity;
 }
-
 
 
 /* ===== 星 ===== */
