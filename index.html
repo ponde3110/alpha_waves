@@ -1704,11 +1704,12 @@ animateTitle();
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ① 画面を縦固定 ===== */
-  lockPortrait();
+  /* ===== 初期値確認 ===== */
+baseGamma = null;
+baseBeta = null;
 
-  baseGamma = null; // 今の角度をニュートラル
-  baseBeta = null;
+window.addEventListener("deviceorientation", setNeutral, { once:true });
+
 
   /* ===== ② ジャイロ許可取得（最重要） ===== */
   try {
@@ -2156,6 +2157,12 @@ window.addEventListener("orientationchange", updateOrientation);
 updateOrientation();
 
 
+// ===== 初期角度を保存 =====
+function setNeutral(e){
+  if(e.beta == null || e.gamma == null) return;
+  baseGamma = e.gamma;
+  baseBeta  = e.beta;
+}
 
 </script>
 </body>
