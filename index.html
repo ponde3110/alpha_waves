@@ -505,38 +505,6 @@ box-shadow:
     0 4px 6px rgba(0,0,0,0.55);      /* 浮遊影 */
 }
 
-.install-btn-small {
-  position: fixed;
-
-  /* ▼ ここだけ変更 */
-  left: 50%;
-  top: 90%;
-  right: auto;
-  bottom: auto;
-  transform: translate(-50%, -50%);
-
-  padding: 10px 14px;
-  font-size: 13px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(40,40,40,0.75);
-  color: rgba(220,220,220,0.85);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.35);
-  cursor: pointer;
-  z-index: 9999;
-  transition: opacity .2s ease, transform .2s ease;
-}
-
-.install-btn-small:hover {
-  opacity: 0.9;
-  transform: translate(-50%, calc(-50% - 2px));
-}
-
-.install-btn-small:active {
-  transform: translate(-50%, -50%) scale(0.95);
-}
-
 
 
 </style>
@@ -601,9 +569,7 @@ box-shadow:
   </div>
 </div>
 
-<button id="installBtn" class="install-btn-small">
-  Add to Home Screen
-</button>
+
 
 <script>
 
@@ -2201,33 +2167,6 @@ function setNeutral(e){
 window.addEventListener("load", () => {
   window.scrollTo(0, 1);
 });
-
-
-
-let deferredPrompt = null;
-
-// インストールイベントを捕まえる
-window.addEventListener("beforeinstallprompt", e => {
-  e.preventDefault();
-  deferredPrompt = e;
-});
-
-// ボタンを押した時
-installBtn.onclick = async () => {
-  if (!deferredPrompt) {
-    alert("Installation is not available on this device yet.");
-    return;
-  }
-
-  deferredPrompt.prompt();
-  const result = await deferredPrompt.userChoice;
-
-  if (result.outcome === "accepted") {
-    console.log("App installed");
-  }
-
-  deferredPrompt = null;
-};
 
 </script>
 </body>
