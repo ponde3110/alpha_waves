@@ -2113,16 +2113,14 @@ const isMobileDevice =
 
 function updateOrientation() {
 
-  // 初期設定中なら辞める
-  if (calibrating) return;
-
-  // ★ モバイルでなければ常に false
   if (!isMobileDevice) {
     isLandscape = false;
     return;
   }
 
   isLandscape = window.innerWidth > window.innerHeight;
+
+  if (calibrating) return;
 
   if (isLandscape) {
 
@@ -2134,7 +2132,9 @@ function updateOrientation() {
 
   } else {
 
-    if (!gameStarted) {
+    // ★ スタート前だけ表示を戻す（ゲームオーバー除外）
+    if (!gameStarted && !isGameOver) {
+
       if (title) title.style.display = "";
       if (author) author.style.display = "";
       if (startBtn) startBtn.style.display = "";
@@ -2142,6 +2142,8 @@ function updateOrientation() {
     }
   }
 }
+
+
 
 window.addEventListener("resize", updateOrientation);
 window.addEventListener("orientationchange", updateOrientation);
