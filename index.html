@@ -2,13 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,
-               height=device-height,
-               initial-scale=1.0,
-               maximum-scale=1.0,
-               user-scalable=no">
-<title>Flow with the α-waves</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<title>α-waves</title>
 
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 
@@ -2156,6 +2154,11 @@ function setNeutral(e){
   baseBeta  = e.beta;
   calibrating = false;
 }
+
+// ===== アドレスバーを消す =====
+window.addEventListener("load", () => {
+  window.scrollTo(0, 1);
+});
 
 </script>
 </body>
