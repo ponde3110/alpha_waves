@@ -1,1 +1,8 @@
-"display": "fullscreen"
+{
+  "name": "Flow Game",
+  "short_name": "Flow",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}
