@@ -567,17 +567,27 @@ box-shadow:
 
 <script>
 
+/* ===== 縦固定 ===== */
+function lockPortrait() {
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock("portrait").catch(() => {});
+  }
+}
 
-let lastBeta = null;
-let lastGamma = null;
+function checkOrientation() {
+  document.body.classList.toggle(
+    "landscape",
+    window.innerWidth > window.innerHeight
+  );
+}
 
-/* ===== 常時ジャイロ取得 ===== */
-window.addEventListener("deviceorientation", e => {
-  if (e.beta == null || e.gamma == null) return;
-  lastBeta = e.beta;
-  lastGamma = e.gamma;
-});
+window.addEventListener("resize", checkOrientation);
+checkOrientation();
 
+
+// ユーザー操作後でないと効かない端末があるため
+document.addEventListener("click", lockPortrait, { once: true });
+document.addEventListener("touchstart", lockPortrait, { once: true });
 
 
 /* ===== Audio ===== */
@@ -1694,18 +1704,13 @@ animateTitle();
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ジャイロ起動（Android必須） ===== */
-  if (!window.gyroActive) {
-    window.gyroActive = true;
+  /* ===== ニュートラル初期化 ===== */
+  gyroReady = false;
+  baseGamma = null;
+  baseBeta = null;
+  calibrating = true;
 
-    window.addEventListener("deviceorientation", e => {
-      if (e.beta == null || e.gamma == null) return;
-      lastBeta = e.beta;
-      lastGamma = e.gamma;
-    });
-  }
-
-  /* ===== iOS用許可 ===== */
+  /* ===== ジャイロ許可取得 ===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1713,18 +1718,17 @@ startBtn.onclick = async () => {
     ) {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== "granted") return;
-    }
-  } catch (e) {}
 
-  /* ===== ニュートラル確定 ===== */
-  if (lastBeta !== null && lastGamma !== null) {
-    baseBeta = lastBeta;
-    baseGamma = lastGamma;
-  } else {
-    // 念のため保険（ほぼ起きない）
-    baseBeta = 0;
-    baseGamma = 0;
+      window.addEventListener("deviceorientation", handleOrientation);
+    } else {
+      window.addEventListener("deviceorientation", handleOrientation);
+    }
+  } catch (err) {
+    console.error(err);
   }
+
+  /* ===== ニュートラル取得（許可後に！） ===== */
+  window.addEventListener("deviceorientation", setNeutral, { once: true });
 
   /* ===== UI非表示 ===== */
   ruleBtn.style.display = "none";
@@ -1732,14 +1736,14 @@ startBtn.onclick = async () => {
   title.style.display = "none";
   author.style.display = "none";
 
-  /* ===== ゲーム初期化 ===== */
+  /* ===== 以下ゲーム初期化はそのままでOK ===== */
   invincible = 0;
   sideHitFlash = 0;
   sideHitFlashLeft = 0;
   sideHitFlashRight = 0;
   hatapieFlash = 0;
 
-  if ("wakeLock" in navigator) enableWakeLock();
+  if ('wakeLock' in navigator) enableWakeLock();
 
   gameStarted = true;
   scoreStarted = true;
@@ -1758,13 +1762,15 @@ startBtn.onclick = async () => {
   inputX = 0;
   inputY = 0;
 
+  chordPlaying = false;
+  sideHitFlash = 0;
+
   if (audioCtx.state === "suspended") await audioCtx.resume();
   playChord();
 
   startMessage.style.opacity = "1";
   setTimeout(() => startMessage.style.opacity = "0", 3000);
 };
-
 
 
 
