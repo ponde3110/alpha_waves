@@ -506,17 +506,14 @@ box-shadow:
 }
 
 .install-btn-small {
-  position: fixed;
+  /* ▼ fixed を削除 */
+  position: static;
 
-  /* ▼ ここだけ変更 */
-  left: 50%;
-  top: 90%;
-  right: auto;
-  bottom: auto;
-  transform: translate(-50%, -50%);
+  display: block;
+  margin: 16px auto;   /* 上下に余白＋中央寄せ */
 
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: 18px;
   border-radius: 10px;
   border: none;
   background: rgba(40,40,40,0.75);
@@ -524,18 +521,19 @@ box-shadow:
   backdrop-filter: blur(6px);
   box-shadow: 0 4px 12px rgba(0,0,0,.35);
   cursor: pointer;
-  z-index: 9999;
+  z-index: 1;
   transition: opacity .2s ease, transform .2s ease;
 }
 
 .install-btn-small:hover {
   opacity: 0.9;
-  transform: translate(-50%, calc(-50% - 2px));
+  transform: translateY(-2px);
 }
 
 .install-btn-small:active {
-  transform: translate(-50%, -50%) scale(0.95);
+  transform: scale(0.95);
 }
+
 
 
 
@@ -594,16 +592,15 @@ box-shadow:
       <div class="ruleRow ruleCenter">
       <span class="ruleText">Start = Neutral & 50k = Life ↑</span>
       </div>
+      <button id="installBtn" class="install-btn-small">
+  Add to Home Screen
+</button>
     <img src="QR.png" id="ruleQR" alt="QR code">
       <div class="ruleRow ruleCenter">
       <span class="ruleText">Scan to Share via QR</span>
       </div>
   </div>
 </div>
-
-<button id="installBtn" class="install-btn-small">
-  Add to Home Screen
-</button>
 
 <script>
 
