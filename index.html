@@ -363,6 +363,7 @@ box-shadow:
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  box-sizing: border-box;
 
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.25);
@@ -370,10 +371,11 @@ box-shadow:
   font-size: 12px;
   font-weight: 600;
   color: white;
+  line-height: normal; /* line-height は無効にしてOK */
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex;              /* flex で中央揃え */
+  align-items: center;        /* 縦中央 */
+  justify-content: center;    /* 横中央 */
 
   cursor: pointer;
 
@@ -385,6 +387,8 @@ box-shadow:
     transform 0.15s ease,
     box-shadow 0.2s ease;
 }
+
+
 
 /* ✨ ホバーで発光 */
 #ruleClose:hover {
