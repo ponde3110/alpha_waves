@@ -324,7 +324,7 @@ box-shadow:
   background: rgba(140, 200, 160, 0.60);   /* 0.80なら濃 */
   border: 1.5px solid rgba(255,255,255,0.28);
   border-radius: 18px;
-  padding: 20px 20px; /* 上下 20px、左右 10px */
+  padding: 30px 30px 20px 20px;  /* 上右下左 */
   max-width: 80vw;
   max-height: 80vh;
   overflow-y: auto;
@@ -1704,52 +1704,46 @@ animateTitle();
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== 初期値確認 ===== */
-baseGamma = null;
-baseBeta = null;
+  /* ===== ニュートラル初期化 ===== */
+  gyroReady = false;
+  baseGamma = null;
+  baseBeta = null;
 
-window.addEventListener("deviceorientation", setNeutral, { once:true });
-
-
-  /* ===== ② ジャイロ許可取得（最重要） ===== */
+  /* ===== ジャイロ許可取得 ===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function"
     ) {
-      // iOS (iPad / iPhone)
       const permission = await DeviceOrientationEvent.requestPermission();
-      if (permission === "granted") {
-        window.addEventListener("deviceorientation", handleOrientation);
-      }
+      if (permission !== "granted") return;
+
+      window.addEventListener("deviceorientation", handleOrientation);
     } else {
-      // Android / その他
       window.addEventListener("deviceorientation", handleOrientation);
     }
   } catch (err) {
-    console.error("Gyro permission error:", err);
+    console.error(err);
   }
 
-  ruleBtn.style.display = "none";
+  /* ===== ニュートラル取得（許可後に！） ===== */
+  window.addEventListener("deviceorientation", setNeutral, { once: true });
 
-  /* --- UI非表示 --- */
+  /* ===== UI非表示 ===== */
+  ruleBtn.style.display = "none";
   startBtn.style.display = "none";
   title.style.display = "none";
   author.style.display = "none";
 
-  /* --- 初期化 --- */
+  /* ===== 以下ゲーム初期化はそのままでOK ===== */
   invincible = 0;
   sideHitFlash = 0;
   sideHitFlashLeft = 0;
   sideHitFlashRight = 0;
   hatapieFlash = 0;
 
-  /* --- Wake Lock --- */
-  if ('wakeLock' in navigator) {
-    enableWakeLock();
-  }
+  if ('wakeLock' in navigator) enableWakeLock();
 
-  /* --- ゲーム状態 --- */
   gameStarted = true;
   scoreStarted = true;
   isGameOver = false;
@@ -1770,17 +1764,11 @@ window.addEventListener("deviceorientation", setNeutral, { once:true });
   chordPlaying = false;
   sideHitFlash = 0;
 
-  /* ===== Audio resume（iOS必須） ===== */
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-  }
+  if (audioCtx.state === "suspended") await audioCtx.resume();
   playChord();
 
-  /* ===== スタートメッセージ ===== */
   startMessage.style.opacity = "1";
-  setTimeout(() => {
-    startMessage.style.opacity = "0";
-  }, 3000);
+  setTimeout(() => startMessage.style.opacity = "0", 3000);
 };
 
 
