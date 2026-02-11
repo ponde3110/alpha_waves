@@ -1694,7 +1694,18 @@ animateTitle();
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ジャイロ許可 ===== */
+  /* ===== ジャイロ起動（Android必須） ===== */
+  if (!window.gyroActive) {
+    window.gyroActive = true;
+
+    window.addEventListener("deviceorientation", e => {
+      if (e.beta == null || e.gamma == null) return;
+      lastBeta = e.beta;
+      lastGamma = e.gamma;
+    });
+  }
+
+  /* ===== iOS用許可 ===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1703,12 +1714,16 @@ startBtn.onclick = async () => {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== "granted") return;
     }
-  } catch(e){}
+  } catch (e) {}
 
-    /* ===== 最新姿勢をニュートラルに ===== */
+  /* ===== ニュートラル確定 ===== */
   if (lastBeta !== null && lastGamma !== null) {
     baseBeta = lastBeta;
     baseGamma = lastGamma;
+  } else {
+    // 念のため保険（ほぼ起きない）
+    baseBeta = 0;
+    baseGamma = 0;
   }
 
   /* ===== UI非表示 ===== */
@@ -1717,14 +1732,14 @@ startBtn.onclick = async () => {
   title.style.display = "none";
   author.style.display = "none";
 
-  /* ===== ゲーム初期化 以下そのまま ===== */
+  /* ===== ゲーム初期化 ===== */
   invincible = 0;
   sideHitFlash = 0;
   sideHitFlashLeft = 0;
   sideHitFlashRight = 0;
   hatapieFlash = 0;
 
-  if ('wakeLock' in navigator) enableWakeLock();
+  if ("wakeLock" in navigator) enableWakeLock();
 
   gameStarted = true;
   scoreStarted = true;
