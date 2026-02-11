@@ -583,6 +583,8 @@ let sideHitFlashRight = 0;
 
 let hatapieFlash = 0;   // ★ はたピー接触時の色変化用
 
+let isLandscape = false;　// 回転時の警告用
+
 
 const muteBtn = document.getElementById("muteBtn");
 
@@ -1502,6 +1504,36 @@ let explodeFrame = 0;
 
 /* ===== ループ ===== */
 function loop(){
+
+  // ===== 横向きなら完全停止 =====
+if (isLandscape) {
+
+  // ① まず通常描画（背景や道など）
+  // ※ ここでは何も止めず、すでに描かれている画面を使う
+
+  // ② 半透明の暗幕をかける
+  ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ③ 警告テキスト
+  ctx.fillStyle = "white";
+  ctx.font = "bold 28px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "Please rotate your device to portrait mode",
+    canvas.width / 2,
+    canvas.height / 2
+  );
+
+  requestAnimationFrame(loop);
+  return;
+}
+
+
+  // ===== ここから下が通常ゲーム処理 =====
+
+
   if(!hiLabel.dataset.init){
     hiLabel.textContent = "HI " + Math.floor(hiScore);
     hiLabel.dataset.init = true;
@@ -1615,6 +1647,8 @@ if (score >= nextLifeScore) {
   }
 
   requestAnimationFrame(loop);
+
+
 }
 
 loop();
@@ -2048,6 +2082,47 @@ function drawRuleHatapie() {
 drawRuleBall();
 drawRuleTell();
 drawRuleHatapie();
+
+// ===== 画面回転警告 =====
+// モバイル判定（iPadOS対応込み）
+const isMobileDevice =
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+function updateOrientation() {
+
+  // ★ モバイルでなければ常に false
+  if (!isMobileDevice) {
+    isLandscape = false;
+    return;
+  }
+
+  isLandscape = window.innerWidth > window.innerHeight;
+
+  if (isLandscape) {
+
+    if (title) title.style.display = "none";
+    if (author) author.style.display = "none";
+    if (startBtn) startBtn.style.display = "none";
+    if (ruleBtn) ruleBtn.style.display = "none";
+    if (startMessage) startMessage.style.opacity = "0";
+
+  } else {
+
+    if (!gameStarted) {
+      if (title) title.style.display = "";
+      if (author) author.style.display = "";
+      if (startBtn) startBtn.style.display = "";
+      if (ruleBtn) ruleBtn.style.display = "";
+    }
+  }
+}
+
+window.addEventListener("resize", updateOrientation);
+window.addEventListener("orientationchange", updateOrientation);
+
+updateOrientation();
+
 
 
 </script>
