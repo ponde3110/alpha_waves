@@ -616,7 +616,7 @@ let sideHitFlashRight = 0;
 let hatapieFlash = 0;   // ★ はたピー接触時の色変化用
 
 let isLandscape = false;　// 回転時の警告用
-
+let calibrating = false; // ニュートラル設定中は回転判定を止める変数
 
 const muteBtn = document.getElementById("muteBtn");
 
@@ -1708,6 +1708,7 @@ startBtn.onclick = async () => {
   gyroReady = false;
   baseGamma = null;
   baseBeta = null;
+  calibrating = true;
 
   /* ===== ジャイロ許可取得 ===== */
   try {
@@ -2112,6 +2113,9 @@ const isMobileDevice =
 
 function updateOrientation() {
 
+  // 初期設定中なら辞める
+  if (calibrating) return;
+
   // ★ モバイルでなければ常に false
   if (!isMobileDevice) {
     isLandscape = false;
@@ -2150,6 +2154,7 @@ function setNeutral(e){
   if(e.beta == null || e.gamma == null) return;
   baseGamma = e.gamma;
   baseBeta  = e.beta;
+  calibrating = false;
 }
 
 </script>
