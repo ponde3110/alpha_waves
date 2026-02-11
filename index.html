@@ -776,7 +776,7 @@ const keys = {};
 const isIPad =
   /iPad/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  
+
 let tiltInputX = 0, tiltInputY = 0;
 
 let baseGamma = null;
@@ -787,7 +787,7 @@ function handleOrientation(e) {
 
   if (e.beta == null || e.gamma == null) return;
 
-  // 初回のみ基準保存
+  // ★ 基準がまだ無い間は常に更新（安定するまで待つ）
   if (baseGamma === null) {
     baseGamma = e.gamma;
     baseBeta  = e.beta;
@@ -812,15 +812,15 @@ function handleOrientation(e) {
       break;
   }
 
-  // ★ iPadのみ時計回り90度回転
   if (isIPad) {
-    [x, y] = [y, -x];
+    [x, y] = [-y, x];
   }
 
   const sensitivity = 0.04;
   tiltInputX = x * sensitivity;
   tiltInputY = y * sensitivity;
 }
+
 
 
 
@@ -1638,12 +1638,11 @@ animateTitle();
 /* ===== STARTボタン（iPad完全対応版） ===== */
 startBtn.onclick = async () => {
 
-  baseGamma = null; // 今の角度をニュートラル
-  baseBeta = null;
-
-
   /* ===== ① 画面を縦固定 ===== */
   lockPortrait();
+
+  baseGamma = null; // 今の角度をニュートラル
+  baseBeta = null;
 
   /* ===== ② ジャイロ許可取得（最重要） ===== */
   try {
