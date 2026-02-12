@@ -853,21 +853,41 @@ let tiltInputX = 0, tiltInputY = 0;
 let baseGamma = null;
 let baseBeta = null;
 
-
 function handleOrientation(e) {
 
   if (e.beta == null || e.gamma == null) return;
 
-  // ★ 基準がまだ無い間は常に更新（安定するまで待つ）
-  if (baseGamma === null) {
-    baseGamma = e.gamma;
-    baseBeta  = e.beta;
-    return;
+  /* =========================================
+     ① ゲーム開始前 → ニュートラル用サンプリング
+     ========================================= */
+  if (!gameStarted) {
+
+    neutralSamples.push({
+      beta: e.beta,
+      gamma: e.gamma
+    });
+
+    if (neutralSamples.length > NEUTAL_SAMPLE_MAX) {
+      neutralSamples.shift();   // 古いデータを削除
+    }
+
+    if (neutralSamples.length >= 10) {
+      neutralReady = true;
+    }
+
+    return;   // 開始前はここで終了
   }
+
+  /* =========================================
+     ② ゲーム中 → 基準との差分で操作
+     ========================================= */
+
+  if (baseGamma === null || baseBeta === null) return;
 
   let x = e.gamma - baseGamma;
   let y = e.beta  - baseBeta;
 
+  /* ===== 画面回転補正 ===== */
   const angle = (screen.orientation && screen.orientation.angle) || 0;
 
   switch (angle) {
@@ -883,15 +903,24 @@ function handleOrientation(e) {
       break;
   }
 
+  /* ===== iPad補正 ===== */
+  const isIPad =
+    /iPad/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   if (isIPad) {
     [x, y] = [-y, x];
   }
 
+  /* ===== 感度 ===== */
   const sensitivity = 0.04;
+
   tiltInputX = x * sensitivity;
   tiltInputY = y * sensitivity;
 }
 
+/* ===== ここに書く！！ ===== */
+window.addEventListener("deviceorientation", handleOrientation);
 
 
 
@@ -1739,15 +1768,13 @@ function animateTitle() {
 animateTitle();
 
 /* ===== STARTボタン（iPad完全対応版） ===== */
+let neutralSamples = [];
+const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
+let neutralReady = false;
+
 startBtn.onclick = async () => {
 
-  /* ===== ニュートラル初期化 ===== */
-  gyroReady = false;
-  baseGamma = null;
-  baseBeta = null;
-  calibrating = true;
-
-  /* ===== ジャイロ許可取得 ===== */
+  /* ===== ジャイロ許可取得（iOS対策のみ）===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1755,17 +1782,30 @@ startBtn.onclick = async () => {
     ) {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== "granted") return;
-
-      window.addEventListener("deviceorientation", handleOrientation);
-    } else {
-      window.addEventListener("deviceorientation", handleOrientation);
     }
   } catch (err) {
     console.error(err);
   }
 
-  /* ===== ニュートラル取得（許可後に！） ===== */
-  window.addEventListener("deviceorientation", setNeutral, { once: true });
+  /* ===== ニュートラル確定（平均化方式）===== */
+  if (neutralSamples.length > 0) {
+
+    let sumBeta = 0;
+    let sumGamma = 0;
+
+    neutralSamples.forEach(s => {
+      sumBeta  += s.beta;
+      sumGamma += s.gamma;
+    });
+
+    baseBeta  = sumBeta  / neutralSamples.length;
+    baseGamma = sumGamma / neutralSamples.length;
+
+  } else {
+    // データがまだない場合の安全値
+    baseBeta  = 0;
+    baseGamma = 0;
+  }
 
   /* ===== UI非表示 ===== */
   ruleBtn.style.display = "none";
@@ -1773,7 +1813,7 @@ startBtn.onclick = async () => {
   title.style.display = "none";
   author.style.display = "none";
 
-  /* ===== 以下ゲーム初期化はそのままでOK ===== */
+  /* ===== ゲーム初期化 ===== */
   invincible = 0;
   sideHitFlash = 0;
   sideHitFlashLeft = 0;
@@ -1808,6 +1848,7 @@ startBtn.onclick = async () => {
   startMessage.style.opacity = "1";
   setTimeout(() => startMessage.style.opacity = "0", 3000);
 };
+
 
 
 
@@ -2186,13 +2227,6 @@ window.addEventListener("orientationchange", updateOrientation);
 updateOrientation();
 
 
-// ===== 初期角度を保存 =====
-function setNeutral(e){
-  if(e.beta == null || e.gamma == null) return;
-  baseGamma = e.gamma;
-  baseBeta  = e.beta;
-  calibrating = false;
-}
 
 // ===== アドレスバーを消す =====
 window.addEventListener("load", () => {
