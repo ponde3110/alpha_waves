@@ -577,16 +577,6 @@ function lockPortrait() {
   }
 }
 
-function checkOrientation() {
-  document.body.classList.toggle(
-    "landscape",
-    window.innerWidth > window.innerHeight
-  );
-}
-
-window.addEventListener("resize", checkOrientation);
-checkOrientation();
-
 
 // ユーザー操作後でないと効かない端末があるため
 document.addEventListener("click", lockPortrait, { once: true });
@@ -819,6 +809,7 @@ let tiltInputX = 0, tiltInputY = 0;
 let baseGamma = null;
 let baseBeta = null;
 
+
 function handleOrientation(e) {
 
   if (e.beta == null || e.gamma == null) return;
@@ -833,15 +824,12 @@ function handleOrientation(e) {
       gamma: e.gamma
     });
 
+    // 最大数を超えたら古いものを削除
     if (neutralSamples.length > NEUTAL_SAMPLE_MAX) {
-      neutralSamples.shift();   // 古いデータを削除
+      neutralSamples.shift();
     }
 
-    if (neutralSamples.length >= 10) {
-      neutralReady = true;
-    }
-
-    return;   // 開始前はここで終了
+    return;   // ゲーム開始前はここで終了
   }
 
   /* =========================================
@@ -869,7 +857,7 @@ function handleOrientation(e) {
       break;
   }
 
-  /* ===== iPad補正 ===== */
+  /* ===== iPad補正（最終段階で適用） ===== */
   const isIPad =
     /iPad/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -885,7 +873,7 @@ function handleOrientation(e) {
   tiltInputY = y * sensitivity;
 }
 
-/* ===== ここに書く！！ ===== */
+/* ===== イベント登録 ===== */
 window.addEventListener("deviceorientation", handleOrientation);
 
 
@@ -1738,9 +1726,10 @@ let neutralSamples = [];
 const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
 let neutralReady = false;
 
+/* ===== STARTボタン（iPad完全安定版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ジャイロ許可取得（iOS対策のみ）===== */
+  /* ===== ジャイロ許可取得（iOS対策）===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1753,66 +1742,82 @@ startBtn.onclick = async () => {
     console.error(err);
   }
 
-  /* ===== ニュートラル確定（平均化方式）===== */
-  if (neutralSamples.length > 0) {
+  /* ===== ニュートラル再取得開始 ===== */
+  neutralSamples = [];
+  neutralReady = false;
 
-    let sumBeta = 0;
-    let sumGamma = 0;
-
-    neutralSamples.forEach(s => {
-      sumBeta  += s.beta;
-      sumGamma += s.gamma;
-    });
-
-    baseBeta  = sumBeta  / neutralSamples.length;
-    baseGamma = sumGamma / neutralSamples.length;
-
-  } else {
-    // データがまだない場合の安全値
-    baseBeta  = 0;
-    baseGamma = 0;
-  }
-
-  /* ===== UI非表示 ===== */
-  ruleBtn.style.display = "none";
-  startBtn.style.display = "none";
-  title.style.display = "none";
-  author.style.display = "none";
-
-  /* ===== ゲーム初期化 ===== */
-  invincible = 0;
-  sideHitFlash = 0;
-  sideHitFlashLeft = 0;
-  sideHitFlashRight = 0;
-  hatapieFlash = 0;
-
-  if ('wakeLock' in navigator) enableWakeLock();
-
-  gameStarted = true;
-  scoreStarted = true;
-  isGameOver = false;
-
-  lives = 3;
-  updateLivesDisplay();
-  score = 0;
-  nextLifeScore = 50000;
-
-  ballX = 0;
-  ballY = H() * 0.6;
-  ballVX = 0;
-  ballVY = 0;
-
-  inputX = 0;
-  inputY = 0;
-
-  chordPlaying = false;
-  sideHitFlash = 0;
-
-  if (audioCtx.state === "suspended") await audioCtx.resume();
-  playChord();
-
+  startMessage.textContent = "Calibrating...";
   startMessage.style.opacity = "1";
-  setTimeout(() => startMessage.style.opacity = "0", 3000);
+
+  // 約0.5秒間サンプリング
+  const CALIBRATION_TIME = 500;
+
+  setTimeout(async () => {
+
+    /* ===== 平均値でニュートラル確定 ===== */
+    if (neutralSamples.length > 5) {
+
+      let sumBeta = 0;
+      let sumGamma = 0;
+
+      neutralSamples.forEach(s => {
+        sumBeta  += s.beta;
+        sumGamma += s.gamma;
+      });
+
+      baseBeta  = sumBeta  / neutralSamples.length;
+      baseGamma = sumGamma / neutralSamples.length;
+
+    } else {
+      // センサーデータがまだ少ない場合
+      baseBeta  = 0;
+      baseGamma = 0;
+    }
+
+    /* ===== UI非表示 ===== */
+    ruleBtn.style.display = "none";
+    startBtn.style.display = "none";
+    title.style.display = "none";
+    author.style.display = "none";
+
+    /* ===== ゲーム初期化 ===== */
+    invincible = 0;
+    sideHitFlash = 0;
+    sideHitFlashLeft = 0;
+    sideHitFlashRight = 0;
+    hatapieFlash = 0;
+
+    if ('wakeLock' in navigator) enableWakeLock();
+
+    gameStarted = true;
+    scoreStarted = true;
+    isGameOver = false;
+
+    lives = 3;
+    updateLivesDisplay();
+    score = 0;
+    nextLifeScore = 50000;
+
+    ballX = 0;
+    ballY = H() * 0.6;
+    ballVX = 0;
+    ballVY = 0;
+
+    inputX = 0;
+    inputY = 0;
+
+    sideHitFlash = 0;
+
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    playChord();
+
+    /* ===== スタートメッセージ ===== */
+    startMessage.textContent = "Flow with the α-waves";
+    setTimeout(() => {
+      startMessage.style.opacity = "0";
+    }, 1500);
+
+  }, CALIBRATION_TIME);
 };
 
 
@@ -2230,6 +2235,32 @@ installBtn.onclick = async () => {
 
   deferredPrompt = null;
 };
+
+function checkOrientation() {
+
+  isLandscape = window.innerWidth > window.innerHeight;
+
+  const uiElements = [
+    title,
+    author,
+    startBtn,
+    ruleBtn,
+    gameoverLabel,
+    startMessage,
+    scoreLabel,
+    hiLabel,
+    livesLabel
+  ];
+
+  uiElements.forEach(el => {
+    if (!el) return;
+    el.style.display = isLandscape ? "none" : "";
+  });
+}
+
+window.addEventListener("resize", checkOrientation);
+checkOrientation();
+
 
 </script>
 </body>
