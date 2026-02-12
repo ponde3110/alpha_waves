@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+<meta name="theme-color" content="#000000">
 
 <title>α-waves</title>
 
@@ -505,37 +505,6 @@ box-shadow:
     0 4px 6px rgba(0,0,0,0.55);      /* 浮遊影 */
 }
 
-.install-btn-small {
-  /* ▼ fixed を削除 */
-  position: static;
-
-  display: block;
-  margin: 16px auto;   /* 上下に余白＋中央寄せ */
-
-  padding: 10px 14px;
-  font-size: 18px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(40,40,40,0.75);
-  color: rgba(220,220,220,0.85);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.35);
-  cursor: pointer;
-  z-index: 1;
-  transition: opacity .2s ease, transform .2s ease;
-}
-
-.install-btn-small:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-}
-
-.install-btn-small:active {
-  transform: scale(0.95);
-}
-
-
-
 
 </style>
 </head>
@@ -592,9 +561,6 @@ box-shadow:
       <div class="ruleRow ruleCenter">
       <span class="ruleText">Start = Neutral & 50k = Life ↑</span>
       </div>
-      <button id="installBtn" class="install-btn-small">
-  Add to Home Screen
-</button>
     <img src="QR.png" id="ruleQR" alt="QR code">
       <div class="ruleRow ruleCenter">
       <span class="ruleText">Scan to Share via QR</span>
@@ -2191,10 +2157,7 @@ const isMobileDevice =
 
 function updateOrientation() {
 
-  // 初期設定中なら辞める
-  if (calibrating) return;
-
-  // ★ モバイルでなければ常に false
+  // モバイルでなければ処理しない
   if (!isMobileDevice) {
     isLandscape = false;
     return;
@@ -2202,6 +2165,9 @@ function updateOrientation() {
 
   isLandscape = window.innerWidth > window.innerHeight;
 
+  /* ===============================
+     横向きの場合（完全遮断）
+     =============================== */
   if (isLandscape) {
 
     if (title) title.style.display = "none";
@@ -2210,29 +2176,34 @@ function updateOrientation() {
     if (ruleBtn) ruleBtn.style.display = "none";
     if (startMessage) startMessage.style.opacity = "0";
 
-  } else {
+    // ★ 追加：ゲームオーバー表示も消す
+    if (gameOverMessage) gameOverMessage.style.display = "none";
 
-    if (!gameStarted) {
-      if (title) title.style.display = "";
-      if (author) author.style.display = "";
-      if (startBtn) startBtn.style.display = "";
-      if (ruleBtn) ruleBtn.style.display = "";
-    }
+    return; // ← 重要：ここで完全終了
+  }
+
+  /* ===============================
+     縦向きに戻った場合
+     =============================== */
+
+  if (!gameStarted) {
+    if (title) title.style.display = "";
+    if (author) author.style.display = "";
+    if (startBtn) startBtn.style.display = "";
+    if (ruleBtn) ruleBtn.style.display = "";
+  }
+
+  // ★ ゲームオーバー中なら再表示
+  if (isGameOver && gameOverMessage) {
+    gameOverMessage.style.display = "";
   }
 }
+
 
 window.addEventListener("resize", updateOrientation);
 window.addEventListener("orientationchange", updateOrientation);
 
 updateOrientation();
-
-
-
-// ===== アドレスバーを消す =====
-window.addEventListener("load", () => {
-  window.scrollTo(0, 1);
-});
-
 
 
 let deferredPrompt = null;
