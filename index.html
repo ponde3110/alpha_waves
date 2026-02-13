@@ -1284,7 +1284,6 @@ else {
 }
 
 
-
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
   if (isGameOver) return;
@@ -1294,33 +1293,39 @@ function updateGameOver() {
 
   clearTimeout(chordTimeout);
   isGameOver = true;
-  gameoverLabel.style.display = "block";
 
+  // 横向きならGAME OVER表示しない
+  if (!isLandscape) {
+    gameoverLabel.style.display = "block";
+  }
 
   hiScore = Math.max(hiScore, score);
   localStorage.setItem("hiScore", Math.floor(hiScore));
   hiLabel.textContent = "HI " + Math.floor(hiScore);
 
   setTimeout(() => {
+
     gameStarted = false;
     isGameOver = false;
 
-    holes.length = 0;   // ← テルを全消去
+    holes.length = 0;
     hatapies.length = 0;
 
-  // ★★★ 追加：無敵・透過・フラッシュを完全リセット ★★★
-  invincible = 0;
-  sideHitFlash = 0;
-  sideHitFlashLeft = 0;
-  sideHitFlashRight = 0;
-  hatapieFlash = 0;
+    invincible = 0;
+    sideHitFlash = 0;
+    sideHitFlashLeft = 0;
+    sideHitFlashRight = 0;
+    hatapieFlash = 0;
 
     gameoverLabel.style.display = "none";
-    title.style.display = "block";
-    author.style.display = "block";
-    startBtn.style.display = "block";
-    ruleBtn.style.display = "block";
 
+    // ★ 横向きならタイトルを出さない
+    if (!isLandscape) {
+      title.style.display = "block";
+      author.style.display = "block";
+      startBtn.style.display = "block";
+      ruleBtn.style.display = "block";
+    }
 
     ballX = 0;
     ballY = H() * 0.6;
@@ -1328,8 +1333,10 @@ function updateGameOver() {
     ballVY = 0;
     inputX = 0;
     inputY = 0;
+
   }, 3000);
 }
+
 
 
 
