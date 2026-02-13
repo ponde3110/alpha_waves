@@ -610,6 +610,7 @@ let hatapieFlash = 0;   // ★ はたピー接触時の色変化用
 
 let isLandscape = false;　// 回転時の警告用
 let calibrating = false; // ニュートラル設定中は回転判定を止める変数
+let gameOverTimeout = null;　// 回転時の時計を止める
 
 const muteBtn = document.getElementById("muteBtn");
 
@@ -1307,38 +1308,35 @@ function updateGameOver() {
   localStorage.setItem("hiScore", Math.floor(hiScore));
   hiLabel.textContent = "HI " + Math.floor(hiScore);
 
-  setTimeout(() => {
+gameOverTimeout = setTimeout(() => {
 
-    gameStarted = false;
-    isGameOver = false;
+  gameStarted = false;
+  isGameOver = false;
 
-    holes.length = 0;
-    hatapies.length = 0;
+  holes.length = 0;
+  hatapies.length = 0;
 
-    invincible = 0;
-    sideHitFlash = 0;
-    sideHitFlashLeft = 0;
-    sideHitFlashRight = 0;
-    hatapieFlash = 0;
+  invincible = 0;
+  sideHitFlash = 0;
+  sideHitFlashLeft = 0;
+  sideHitFlashRight = 0;
+  hatapieFlash = 0;
 
-    gameoverLabel.style.display = "none";
+  gameoverLabel.style.display = "none";
 
-    // ★ 横向きならタイトルを出さない
-    if (!isLandscape) {
-      title.style.display = "block";
-      author.style.display = "block";
-      startBtn.style.display = "block";
-      ruleBtn.style.display = "block";
-    }
+  title.style.display = "block";
+  author.style.display = "block";
+  startBtn.style.display = "block";
+  ruleBtn.style.display = "block";
 
-    ballX = 0;
-    ballY = H() * 0.6;
-    ballVX = 0;
-    ballVY = 0;
-    inputX = 0;
-    inputY = 0;
+  ballX = 0;
+  ballY = H() * 0.6;
+  ballVX = 0;
+  ballVY = 0;
+  inputX = 0;
+  inputY = 0;
 
-  }, 3000);
+}, 3000);
 }
 
 
@@ -2246,8 +2244,25 @@ installBtn.onclick = async () => {
 
 function checkOrientation() {
 
+  const wasLandscape = isLandscape;
   isLandscape = window.innerWidth > window.innerHeight;
 
+  /* ===== 横向きになった瞬間 ===== */
+  if (isLandscape && !wasLandscape) {
+
+    // GAME OVER 即消去
+    if (gameoverLabel) {
+      gameoverLabel.style.display = "none";
+    }
+
+    // ★ ゲームオーバーのタイマー停止
+    if (gameOverTimeout) {
+      clearTimeout(gameOverTimeout);
+      gameOverTimeout = null;
+    }
+  }
+
+  /* ===== UI表示制御 ===== */
   const uiElements = [
     title,
     author,
