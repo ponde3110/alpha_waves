@@ -1,9 +1,9 @@
 {
-  "name": "α-waves",
-  "short_name": "α-waves",
-  "display": "standalone",
-  "orientation": "portrait",
-  "start_url": ".",
+  "name": "Flow Game",
+  "short_name": "Flow",
+  "start_url": "./index.html",
+  "display": "fullscreen",
   "background_color": "#000000",
-  "theme_color": "#000000"
+  "theme_color": "#000000",
+  "orientation": "portrait"
 }
