@@ -1286,6 +1286,10 @@ else {
 
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
+
+  // ★ 横向き中は完全停止
+  if (isLandscape) return;
+
   if (isGameOver) return;
 
   lives = 0;
@@ -1752,9 +1756,6 @@ startBtn.onclick = async () => {
   /* ===== ニュートラル再取得開始 ===== */
   neutralSamples = [];
   neutralReady = false;
-
-  startMessage.textContent = "Calibrating...";
-  startMessage.style.opacity = "1";
 
   // 約0.5秒間サンプリング
   const CALIBRATION_TIME = 500;
