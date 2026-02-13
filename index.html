@@ -2161,61 +2161,83 @@ drawRuleTell();
 drawRuleHatapie();
 
 // ===== 画面回転警告 =====
-// モバイル判定（iPadOS対応込み）
 const isMobileDevice =
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 function updateOrientation() {
-
-  // モバイルでなければ処理しない
   if (!isMobileDevice) {
     isLandscape = false;
     return;
   }
 
+  const wasLandscape = isLandscape;
   isLandscape = window.innerWidth > window.innerHeight;
 
   /* ===============================
-     横向きの場合（完全遮断）
+     横向きの場合（警告のみ、UIは維持）
      =============================== */
   if (isLandscape) {
-
+    // 警告以外のゲーム画面中央の要素をすべて隠す
     if (title) title.style.display = "none";
     if (author) author.style.display = "none";
     if (startBtn) startBtn.style.display = "none";
     if (ruleBtn) ruleBtn.style.display = "none";
     if (startMessage) startMessage.style.opacity = "0";
+    
+    // ゲームオーバーの文字も隠す
+    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
 
-    // ★ 追加：ゲームオーバー表示も消す
-    if (gameOverMessage) gameOverMessage.style.display = "none";
+    // ★【重要】タイマーを止める
+    // 横向きになった瞬間に、タイトルに戻るカウントダウンをキャンセルします
+    if (typeof gameOverTimeout !== 'undefined' && gameOverTimeout) {
+      clearTimeout(gameOverTimeout);
+      gameOverTimeout = null; 
+    }
 
-    return; // ← 重要：ここで完全終了
+    return; 
   }
 
   /* ===============================
      縦向きに戻った場合
      =============================== */
-
-  if (!gameStarted) {
+  // ゲーム開始前ならタイトル一式を表示
+  if (!gameStarted && !isGameOver) {
     if (title) title.style.display = "";
     if (author) author.style.display = "";
     if (startBtn) startBtn.style.display = "";
     if (ruleBtn) ruleBtn.style.display = "";
   }
 
-  // ★ ゲームオーバー中なら再表示
-  if (isGameOver && gameOverMessage) {
-    gameOverMessage.style.display = "";
+  // ★【重要】ゲームオーバー中に縦に戻った場合
+  if (isGameOver) {
+    // ゲームオーバーの文字を再表示
+    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "block";
+    
+    // タイマーを再開（縦に戻ってから3秒後にタイトルへ）
+    if (typeof gameOverTimeout !== 'undefined' && !gameOverTimeout) {
+      gameOverTimeout = setTimeout(resetToTitle, 3000); 
+    }
   }
 }
 
+// ※元々のコードに resetToTitle 関数がない場合は、以下のような処理をどこかに定義してください
+// (既存のコードで setTimeout(..., 3000) の中に書かれている内容を関数化したものです)
+function resetToTitle() {
+    gameStarted = false;
+    isGameOver = false;
+    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
+    if (title) title.style.display = "block";
+    if (author) author.style.display = "block";
+    if (startBtn) startBtn.style.display = "block";
+    if (ruleBtn) ruleBtn.style.display = "block";
+    gameOverTimeout = null;
+    // ...その他、変数のリセット処理など
+}
 
 window.addEventListener("resize", updateOrientation);
 window.addEventListener("orientationchange", updateOrientation);
-
 updateOrientation();
-
 
 let deferredPrompt = null;
 
