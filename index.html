@@ -2277,11 +2277,11 @@ function checkOrientation() {
       gameoverLabel.style.display = "none";
     }
 
-    // ★ ゲームオーバーのタイマー停止
-    if (gameOverTimeout) {
-      clearTimeout(gameOverTimeout);
-      gameOverTimeout = null;
-    }
+  // ★ ここがバグの原因：ゲームオーバーのタイマーを止めてしまっている
+  // if (gameOverTimeout) {
+  //   clearTimeout(gameOverTimeout);
+  //   gameOverTimeout = null;
+  // }
   }
 
   /* ===== UI表示制御 ===== */
