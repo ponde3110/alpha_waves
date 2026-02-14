@@ -1733,10 +1733,11 @@ let neutralSamples = [];
 const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
 let neutralReady = false;
 
-/* ===== STARTボタン（即開始版） ===== */
+
+/* ===== STARTボタン（最安定版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ジャイロ許可取得（iOS対策）===== */
+  /* ===== ジャイロ許可取得 ===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1749,13 +1750,30 @@ startBtn.onclick = async () => {
     console.error(err);
   }
 
-  /* ===== ニュートラル初期値（待機しない）===== */
-  neutralSamples = [];
-  neutralReady = false;
+  /* ===== 最初のジャイロ1回を待つ ===== */
+  const firstOrientation = await new Promise(resolve => {
 
-  // ⭐ 即fallback角度で開始
-  baseBeta  = 30;
-  baseGamma = 0;
+    const onceHandler = (e) => {
+      window.removeEventListener("deviceorientation", onceHandler);
+      resolve(e);
+    };
+
+    // ⭐ ユーザー操作直後に登録（重要）
+    window.addEventListener("deviceorientation", onceHandler);
+  });
+
+  /* ===== ニュートラル決定 ===== */
+  if (firstOrientation && firstOrientation.beta !== null) {
+    baseBeta  = firstOrientation.beta;
+    baseGamma = firstOrientation.gamma;
+  } else {
+    // fallback
+    baseBeta  = 45;
+    baseGamma = 0;
+  }
+
+  /* ===== 通常のジャイロ取得開始 ===== */
+  window.addEventListener("deviceorientation", handleOrientation);
 
   /* ===== UI非表示 ===== */
   ruleBtn.style.display = "none";
@@ -1792,7 +1810,6 @@ startBtn.onclick = async () => {
   if (audioCtx.state === "suspended") await audioCtx.resume();
   playChord();
 
-  /* ===== スタートメッセージ ===== */
   startMessage.textContent = "Flow with the α-waves";
   setTimeout(() => {
     startMessage.style.opacity = "0";
