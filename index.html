@@ -1569,14 +1569,25 @@ function loop(){
   // ===== 横向きなら完全停止 =====
 if (isLandscape) {
 
-  // ① まず通常描画（背景や道など）
-  // ※ ここでは何も止めず、すでに描かれている画面を使う
+  /* ★★★ 追加：GAME OVER確定処理だけは進める ★★★ */
+  if (gameOverPending && !isGameOver) {
+    ballDestroyed = true;
+    destroySound();
+    explodeFrame = 0;
+    explodeColorPhase = 0;
+    gameOverPending = false;
 
-  // ② 半透明の暗幕をかける
+    setTimeout(() => {
+      updateGameOver();
+      ballDestroyed = false;
+      ballScale = 1;
+    }, 1000);
+  }
+
+  /* ===== 警告描画 ===== */
   ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // ③ 警告テキスト
   ctx.fillStyle = "white";
   ctx.font = "bold 28px sans-serif";
   ctx.textAlign = "center";
