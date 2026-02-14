@@ -1373,8 +1373,7 @@ function updateLivesDisplay() {
 
 /* ===== ボール更新 ===== */
 function updateBall(){
-  if (ballDestroyed || isGameOver) return;
-
+  if (ballDestroyed) return;
 
   /* ===== 入力処理 ===== */
   const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
@@ -1439,8 +1438,11 @@ function updateBall(){
 
     hitSound();
 
-    loseLife();
+    lives--;
+    updateLivesDisplay();
+z
 
+    if (lives === 0) gameOverPending = true;
   }
 
   if (ballX <= -limit && invincible <= 0) {
@@ -1451,8 +1453,9 @@ function updateBall(){
 
     hitSound();
 
-    loseLife();
-
+    lives--;
+    updateLivesDisplay();
+    if (lives === 0) gameOverPending = true;
   }
 
   /* ===== テルとの衝突判定 ===== */
@@ -1485,11 +1488,15 @@ holes.forEach((o, i) => {
 
       invincible = 120;
       sideHitFlash = 120;   // ★ これを追加（半透明化）
-    loseLife();
-tellDestroySound();
+    lives--;
+    updateLivesDisplay();
+    tellDestroySound();
 
-holes.splice(i,1);
 
+    holes.splice(i,1);
+
+
+    if (lives <= 0) gameOverPending = true;
   }
 });
 
@@ -1550,15 +1557,7 @@ if (invincible > 0) invincible--;
 
 }
 
-function loseLife() {
-  lives--;
-  updateLivesDisplay();
 
-  if (lives <= 0 && !isGameOver) {
-    gameOverPending = true;
-    isGameOver = true;   // ★ 最重要
-  }
-}
 
 
 let gameOverPending = false;
@@ -1566,21 +1565,6 @@ let explodeFrame = 0;
 
 /* ===== ループ ===== */
 function loop(){
-
-  // ===== GAME OVER確定 =====
-if (gameOverPending && !ballDestroyed) {
-
-  ballDestroyed = true;
-
-  destroySound();
-  explodeFrame = 0;
-  explodeColorPhase = 0;
-
-  setTimeout(() => {
-    updateGameOver();
-  }, 1000);
-}
-
 
   // ===== 横向きなら完全停止 =====
 if (isLandscape) {
@@ -2240,15 +2224,6 @@ function updateOrientation() {
 // ※元々のコードに resetToTitle 関数がない場合は、以下のような処理をどこかに定義してください
 // (既存のコードで setTimeout(..., 3000) の中に書かれている内容を関数化したものです)
 function resetToTitle() {
-
-      // ★ 二重実行防止（最重要）
-    if (!isGameOver) return;
-
-        if (gameOverTimeout) {
-        clearTimeout(gameOverTimeout);
-        gameOverTimeout = null;
-    }
-
     gameStarted = false;
     isGameOver = false;
     if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
