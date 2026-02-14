@@ -1703,20 +1703,24 @@ if (score >= nextLifeScore) {
 }
 
 
-  if(gameOverPending && !isGameOver){
-    if(Math.abs(ballVX) < 1 && Math.abs(ballVY) < 1){
-      ballDestroyed = true;
-      destroySound();
-      explodeFrame = 0;   // ← 追加
-      explodeColorPhase = 0;   // ★ 追加
-      gameOverPending = false;
-      setTimeout(()=>{
-        updateGameOver();
-        ballDestroyed = false;
-        ballScale = 1;
-      },1000);
-    }
-  }
+// ===== GAME OVER確定処理（修正版）=====
+if (gameOverPending && !isGameOver) {
+
+  // ★ 一度だけ実行
+  gameOverPending = false;
+
+  ballDestroyed = true;
+  destroySound();
+  explodeFrame = 0;
+  explodeColorPhase = 0;
+
+  setTimeout(() => {
+    updateGameOver();
+    ballDestroyed = false;
+    ballScale = 1;
+  }, 1000);
+}
+
 
   requestAnimationFrame(loop);
 
