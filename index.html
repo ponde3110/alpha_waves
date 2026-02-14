@@ -1288,8 +1288,6 @@ else {
 /* ===== ゲームオーバー ===== */
 function updateGameOver() {
 
-  // ★ 横向き中は完全停止
-  if (isLandscape) return;
 
   if (isGameOver) return;
 
@@ -2175,10 +2173,10 @@ function updateOrientation() {
   isLandscape = window.innerWidth > window.innerHeight;
 
   /* ===============================
-     横向きの場合（警告のみ、UIは維持）
+     横向きの場合（警告中）
      =============================== */
   if (isLandscape) {
-    // 警告以外のゲーム画面中央の要素をすべて隠す
+    // UIを隠す
     if (title) title.style.display = "none";
     if (author) author.style.display = "none";
     if (startBtn) startBtn.style.display = "none";
@@ -2188,12 +2186,8 @@ function updateOrientation() {
     // ゲームオーバーの文字も隠す
     if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
 
-    // ★【重要】タイマーを止める
-    // 横向きになった瞬間に、タイトルに戻るカウントダウンをキャンセルします
-    if (typeof gameOverTimeout !== 'undefined' && gameOverTimeout) {
-      clearTimeout(gameOverTimeout);
-      gameOverTimeout = null; 
-    }
+    // ★【修正】タイマーを止めない（clearTimeoutを削除）
+    // これにより、横向き警告中もバックグラウンドで「3秒後にタイトルへ戻る」カウントが続きます。
 
     return; 
   }
@@ -2209,15 +2203,12 @@ function updateOrientation() {
     if (ruleBtn) ruleBtn.style.display = "";
   }
 
-  // ★【重要】ゲームオーバー中に縦に戻った場合
+  // ★【修正】縦に戻った時の処理
   if (isGameOver) {
-    // ゲームオーバーの文字を再表示
+    // すでにタイトルに戻るタイマーが作動中、あるいは完了しているはずなので、
+    // ここでタイマーを新規に作る必要はありません。
+    // まだリセット前（3秒以内）であれば、文字だけ再表示します。
     if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "block";
-    
-    // タイマーを再開（縦に戻ってから3秒後にタイトルへ）
-    if (typeof gameOverTimeout !== 'undefined' && !gameOverTimeout) {
-      gameOverTimeout = setTimeout(resetToTitle, 3000); 
-    }
   }
 }
 
@@ -2276,12 +2267,6 @@ function checkOrientation() {
     if (gameoverLabel) {
       gameoverLabel.style.display = "none";
     }
-
-  // ★ ここがバグの原因：ゲームオーバーのタイマーを止めてしまっている
-  // if (gameOverTimeout) {
-  //   clearTimeout(gameOverTimeout);
-  //   gameOverTimeout = null;
-  // }
   }
 
   /* ===== UI表示制御 ===== */
