@@ -1438,11 +1438,8 @@ function updateBall(){
 
     hitSound();
 
-    lives--;
-    updateLivesDisplay();
+    loseLife();
 
-
-    if (lives === 0) gameOverPending = true;
   }
 
   if (ballX <= -limit && invincible <= 0) {
@@ -1453,9 +1450,8 @@ function updateBall(){
 
     hitSound();
 
-    lives--;
-    updateLivesDisplay();
-    if (lives === 0) gameOverPending = true;
+    loseLife();
+
   }
 
   /* ===== テルとの衝突判定 ===== */
@@ -1488,15 +1484,11 @@ holes.forEach((o, i) => {
 
       invincible = 120;
       sideHitFlash = 120;   // ★ これを追加（半透明化）
-    lives--;
-    updateLivesDisplay();
-    tellDestroySound();
+    loseLife();
+tellDestroySound();
 
+holes.splice(i,1);
 
-    holes.splice(i,1);
-
-
-    if (lives <= 0) gameOverPending = true;
   }
 });
 
@@ -1557,7 +1549,15 @@ if (invincible > 0) invincible--;
 
 }
 
+function loseLife() {
+  lives--;
+  updateLivesDisplay();
 
+  if (lives <= 0 && !isGameOver) {
+    gameOverPending = true;
+    isGameOver = true;   // ★ 最重要
+  }
+}
 
 
 let gameOverPending = false;
@@ -2188,7 +2188,12 @@ function updateOrientation() {
     // ゲームオーバーの文字も隠す
     if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
 
- 
+    // ★【重要】タイマーを止める
+    // 横向きになった瞬間に、タイトルに戻るカウントダウンをキャンセルします
+    if (typeof gameOverTimeout !== 'undefined' && gameOverTimeout) {
+      clearTimeout(gameOverTimeout);
+      gameOverTimeout = null; 
+    }
 
     return; 
   }
