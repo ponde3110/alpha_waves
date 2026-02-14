@@ -2194,46 +2194,41 @@ window.addEventListener("resize", updateOrientation);
 window.addEventListener("orientationchange", updateOrientation);
 updateOrientation();
 
-let deferredPrompt = null;
 
-// インストールイベントを捕まえる
-window.addEventListener("beforeinstallprompt", e => {
-  e.preventDefault();
-  deferredPrompt = e;
-});
+/* ===== 画面向きチェック（最終安定版）===== */
+function checkOrientation() {
 
-// ボタンを押した時
-installBtn.onclick = async () => {
-  if (!deferredPrompt) {
-    alert("Installation is not available on this device yet.");
+  // ---- タッチデバイス判定（iPad完全対応）----
+  const isTouchDevice = matchMedia("(pointer: coarse)").matches;
+
+  // ★ PCでは横向き制御を無効
+  if (!isTouchDevice) {
+    isLandscape = false;
+
+    const uiElements = [
+      title,
+      author,
+      startBtn,
+      ruleBtn,
+      gameoverLabel,
+      startMessage,
+      scoreLabel,
+      hiLabel,
+      livesLabel
+    ];
+
+    uiElements.forEach(el => {
+      if (!el) return;
+      el.style.display = "";
+    });
+
     return;
   }
 
-  deferredPrompt.prompt();
-  const result = await deferredPrompt.userChoice;
-
-  if (result.outcome === "accepted") {
-    console.log("App installed");
-  }
-
-  deferredPrompt = null;
-};
-
-function checkOrientation() {
-
+  // ---- スマホ・iPadのみ ----
   const wasLandscape = isLandscape;
   isLandscape = window.innerWidth > window.innerHeight;
 
-  /* ===== 横向きになった瞬間 ===== */
-  if (isLandscape && !wasLandscape) {
-
-    // GAME OVER 即消去
-    if (gameoverLabel) {
-      gameoverLabel.style.display = "none";
-    }
-  }
-
-  /* ===== UI表示制御 ===== */
   const uiElements = [
     title,
     author,
@@ -2251,6 +2246,7 @@ function checkOrientation() {
     el.style.display = isLandscape ? "none" : "";
   });
 }
+
 
 window.addEventListener("resize", checkOrientation);
 checkOrientation();
