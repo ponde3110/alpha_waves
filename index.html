@@ -800,6 +800,9 @@ let ballX=0, ballY=H()*0.6, ballVX=0, ballVY=0, inputX=0, inputY=0;
 const BALL_R = 14;
 const keys = {};
 
+let neutralSamples = [];
+let neutralReady = false;
+
 // ===== スマホ傾き操作 =====
 const isIPad =
   /iPad/.test(navigator.userAgent) ||
@@ -1729,15 +1732,14 @@ function animateTitle() {
 animateTitle();
 
 /* ===== STARTボタン（iPad完全対応版） ===== */
-let neutralSamples = [];
+
 const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
-let neutralReady = false;
 
 
-/* ===== STARTボタン（最安定版） ===== */
+/* ===== STARTボタン（iPad完全安定版） ===== */
 startBtn.onclick = async () => {
 
-  /* ===== ジャイロ許可取得 ===== */
+  /* ===== ジャイロ許可取得（iOS対策）===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1750,72 +1752,78 @@ startBtn.onclick = async () => {
     console.error(err);
   }
 
-  /* ===== 最初のジャイロ1回を待つ ===== */
-  const firstOrientation = await new Promise(resolve => {
+  /* ===== ニュートラル再取得開始 ===== */
+  neutralSamples = [];
+  neutralReady = false;
 
-    const onceHandler = (e) => {
-      window.removeEventListener("deviceorientation", onceHandler);
-      resolve(e);
-    };
+  // 約0.5秒間サンプリング
+  const CALIBRATION_TIME = 500;
 
-    // ⭐ ユーザー操作直後に登録（重要）
-    window.addEventListener("deviceorientation", onceHandler);
-  });
+  setTimeout(async () => {
 
-  /* ===== ニュートラル決定 ===== */
-  if (firstOrientation && firstOrientation.beta !== null) {
-    baseBeta  = firstOrientation.beta;
-    baseGamma = firstOrientation.gamma;
-  } else {
-    // fallback
-    baseBeta  = 45;
-    baseGamma = 0;
-  }
+    /* ===== 平均値でニュートラル確定 ===== */
+    if (neutralSamples.length > 5) {
 
-  /* ===== 通常のジャイロ取得開始 ===== */
-  window.addEventListener("deviceorientation", handleOrientation);
+      let sumBeta = 0;
+      let sumGamma = 0;
 
-  /* ===== UI非表示 ===== */
-  ruleBtn.style.display = "none";
-  startBtn.style.display = "none";
-  title.style.display = "none";
-  author.style.display = "none";
+      neutralSamples.forEach(s => {
+        sumBeta  += s.beta;
+        sumGamma += s.gamma;
+      });
 
-  /* ===== ゲーム初期化 ===== */
-  invincible = 0;
-  sideHitFlash = 0;
-  sideHitFlashLeft = 0;
-  sideHitFlashRight = 0;
-  hatapieFlash = 0;
+      baseBeta  = sumBeta  / neutralSamples.length;
+      baseGamma = sumGamma / neutralSamples.length;
 
-  if ('wakeLock' in navigator) enableWakeLock();
+    } else {
+      // センサーデータがまだ少ない場合
+      baseBeta  = 0;
+      baseGamma = 0;
+    }
 
-  gameStarted = true;
-  scoreStarted = true;
-  isGameOver = false;
+    /* ===== UI非表示 ===== */
+    ruleBtn.style.display = "none";
+    startBtn.style.display = "none";
+    title.style.display = "none";
+    author.style.display = "none";
 
-  lives = 3;
-  updateLivesDisplay();
-  score = 0;
-  nextLifeScore = 50000;
+    /* ===== ゲーム初期化 ===== */
+    invincible = 0;
+    sideHitFlash = 0;
+    sideHitFlashLeft = 0;
+    sideHitFlashRight = 0;
+    hatapieFlash = 0;
 
-  ballX = 0;
-  ballY = H() * 0.6;
-  ballVX = 0;
-  ballVY = 0;
+    gameStarted = true;
+    scoreStarted = true;
+    isGameOver = false;
 
-  inputX = 0;
-  inputY = 0;
+    lives = 3;
+    updateLivesDisplay();
+    score = 0;
+    nextLifeScore = 50000;
 
-  if (audioCtx.state === "suspended") await audioCtx.resume();
-  playChord();
+    ballX = 0;
+    ballY = H() * 0.6;
+    ballVX = 0;
+    ballVY = 0;
 
-  startMessage.textContent = "Flow with the α-waves";
-  setTimeout(() => {
-    startMessage.style.opacity = "0";
-  }, 1500);
+    inputX = 0;
+    inputY = 0;
+
+    sideHitFlash = 0;
+
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    playChord();
+
+    /* ===== スタートメッセージ ===== */
+    startMessage.textContent = "Flow with the α-waves";
+    setTimeout(() => {
+      startMessage.style.opacity = "0";
+    }, 1500);
+
+  }, CALIBRATION_TIME);
 };
-
 
 
 
@@ -1827,43 +1835,6 @@ addEventListener("keydown", e => {
   }
 });
 
-let wakeLock = null;
-
-// Wake Lockを要求する関数
-async function enableWakeLock() {
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    // console.logだけにするので画面表示はなし
-    console.log('Wake Lock が有効になりました');
-
-    wakeLock.addEventListener('release', () => {
-      console.log('Wake Lock が解除されました');
-    });
-  } catch (err) {
-    console.error('Wake Lock の取得に失敗:', err);
-  }
-}
-
-// Wake Lockを解除する関数
-function disableWakeLock() {
-  if (wakeLock !== null) {
-    wakeLock.release();
-    wakeLock = null;
-    console.log('Wake Lock を解除しました');
-  }
-}
-
-// ゲーム開始時に呼ぶ
-enableWakeLock();
-
-// タブ非表示→表示になったときに再取得
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    enableWakeLock();
-  } else {
-    wakeLock = null;
-  }
-});
 
 // ===== ライフ回復メッセージ =====
 const lifeUpMessage = document.getElementById("lifeUpMessage");
