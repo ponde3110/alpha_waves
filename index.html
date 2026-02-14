@@ -1730,7 +1730,7 @@ animateTitle();
 
 /* ===== STARTボタン（iPad完全対応版） ===== */
 let neutralSamples = [];
-const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
+const NEUTAL_SAMPLE_MAX = 20;   // 20〜40推奨
 let neutralReady = false;
 
 /* ===== STARTボタン（iPad完全安定版） ===== */
@@ -1754,12 +1754,12 @@ startBtn.onclick = async () => {
   neutralReady = false;
 
   // 約0.5秒間サンプリング
-  const CALIBRATION_TIME = 500;
+  const CALIBRATION_TIME = 250;
 
   setTimeout(async () => {
 
     /* ===== 平均値でニュートラル確定 ===== */
-    if (neutralSamples.length > 5) {
+    if (neutralSamples.length > 3) {
 
       let sumBeta = 0;
       let sumGamma = 0;
