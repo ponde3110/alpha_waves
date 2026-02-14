@@ -2240,6 +2240,15 @@ function updateOrientation() {
 // ※元々のコードに resetToTitle 関数がない場合は、以下のような処理をどこかに定義してください
 // (既存のコードで setTimeout(..., 3000) の中に書かれている内容を関数化したものです)
 function resetToTitle() {
+
+      // ★ 二重実行防止（最重要）
+    if (!isGameOver) return;
+
+        if (gameOverTimeout) {
+        clearTimeout(gameOverTimeout);
+        gameOverTimeout = null;
+    }
+
     gameStarted = false;
     isGameOver = false;
     if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
