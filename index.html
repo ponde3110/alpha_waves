@@ -1733,7 +1733,7 @@ let neutralSamples = [];
 const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
 let neutralReady = false;
 
-/* ===== STARTボタン（iPad完全安定版） ===== */
+/* ===== STARTボタン（即開始版） ===== */
 startBtn.onclick = async () => {
 
   /* ===== ジャイロ許可取得（iOS対策）===== */
@@ -1749,80 +1749,56 @@ startBtn.onclick = async () => {
     console.error(err);
   }
 
-  /* ===== ニュートラル再取得開始 ===== */
+  /* ===== ニュートラル初期値（待機しない）===== */
   neutralSamples = [];
   neutralReady = false;
 
-  // 約0.5秒間サンプリング
-  const CALIBRATION_TIME = 100;
+  // ⭐ 即fallback角度で開始
+  baseBeta  = 30;
+  baseGamma = 0;
 
-  setTimeout(async () => {
+  /* ===== UI非表示 ===== */
+  ruleBtn.style.display = "none";
+  startBtn.style.display = "none";
+  title.style.display = "none";
+  author.style.display = "none";
 
-    /* ===== 平均値でニュートラル確定 ===== */
-    if (neutralSamples.length > 2) {
+  /* ===== ゲーム初期化 ===== */
+  invincible = 0;
+  sideHitFlash = 0;
+  sideHitFlashLeft = 0;
+  sideHitFlashRight = 0;
+  hatapieFlash = 0;
 
-      let sumBeta = 0;
-      let sumGamma = 0;
+  if ('wakeLock' in navigator) enableWakeLock();
 
-      neutralSamples.forEach(s => {
-        sumBeta  += s.beta;
-        sumGamma += s.gamma;
-      });
+  gameStarted = true;
+  scoreStarted = true;
+  isGameOver = false;
 
-      baseBeta  = sumBeta  / neutralSamples.length;
-      baseGamma = sumGamma / neutralSamples.length;
+  lives = 3;
+  updateLivesDisplay();
+  score = 0;
+  nextLifeScore = 50000;
 
-    } else {
-      // センサーデータがまだ少ない場合
-      baseBeta  = 45;
-      baseGamma = 0;
-    }
+  ballX = 0;
+  ballY = H() * 0.6;
+  ballVX = 0;
+  ballVY = 0;
 
-    /* ===== UI非表示 ===== */
-    ruleBtn.style.display = "none";
-    startBtn.style.display = "none";
-    title.style.display = "none";
-    author.style.display = "none";
+  inputX = 0;
+  inputY = 0;
 
-    /* ===== ゲーム初期化 ===== */
-    invincible = 0;
-    sideHitFlash = 0;
-    sideHitFlashLeft = 0;
-    sideHitFlashRight = 0;
-    hatapieFlash = 0;
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+  playChord();
 
-    if ('wakeLock' in navigator) enableWakeLock();
-
-    gameStarted = true;
-    scoreStarted = true;
-    isGameOver = false;
-
-    lives = 3;
-    updateLivesDisplay();
-    score = 0;
-    nextLifeScore = 50000;
-
-    ballX = 0;
-    ballY = H() * 0.6;
-    ballVX = 0;
-    ballVY = 0;
-
-    inputX = 0;
-    inputY = 0;
-
-    sideHitFlash = 0;
-
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-    playChord();
-
-    /* ===== スタートメッセージ ===== */
-    startMessage.textContent = "Flow with the α-waves";
-    setTimeout(() => {
-      startMessage.style.opacity = "0";
-    }, 1500);
-
-  }, CALIBRATION_TIME);
+  /* ===== スタートメッセージ ===== */
+  startMessage.textContent = "Flow with the α-waves";
+  setTimeout(() => {
+    startMessage.style.opacity = "0";
+  }, 1500);
 };
+
 
 
 
