@@ -1373,7 +1373,8 @@ function updateLivesDisplay() {
 
 /* ===== ボール更新 ===== */
 function updateBall(){
-  if (ballDestroyed) return;
+  if (ballDestroyed || isGameOver) return;
+
 
   /* ===== 入力処理 ===== */
   const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
@@ -1565,6 +1566,21 @@ let explodeFrame = 0;
 
 /* ===== ループ ===== */
 function loop(){
+
+  // ===== GAME OVER確定 =====
+if (gameOverPending && !ballDestroyed) {
+
+  ballDestroyed = true;
+
+  destroySound();
+  explodeFrame = 0;
+  explodeColorPhase = 0;
+
+  setTimeout(() => {
+    updateGameOver();
+  }, 1000);
+}
+
 
   // ===== 横向きなら完全停止 =====
 if (isLandscape) {
