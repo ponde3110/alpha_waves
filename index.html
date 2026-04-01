@@ -21,6 +21,10 @@ html, body {
   height: 100%;
   background: #000;
   overflow: hidden;
+  /* iOS Safari でのバウンススクロール防止 */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: none;
 }
 
 body {
@@ -33,9 +37,10 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  width: 100%;      /* 100vw → 100% に変更 */
-  height: 100%;     /* 100vh → 100% に変更 */
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  touch-action: none; /* タッチスクロール防止 */
 }
 
 #hud {
@@ -570,6 +575,15 @@ box-shadow:
 
 <script>
 
+/* ===== iOS スクロール＆ズーム防止 ===== */
+document.addEventListener("touchmove", e => {
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener("gesturestart", e => {
+  e.preventDefault();
+}, { passive: false });
+
 /* ===== 縦固定 ===== */
 function lockPortrait() {
   if (screen.orientation && screen.orientation.lock) {
@@ -584,11 +598,22 @@ document.addEventListener("touchstart", lockPortrait, { once: true });
 
 
 /* ===== Audio ===== */
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// iOS requires AudioContext to be created/resumed inside a user gesture
+let audioCtx = null;
 let audioStarted = false;
-const bgGain = audioCtx.createGain();
-bgGain.gain.value = 0.04;
-bgGain.connect(audioCtx.destination);
+let bgGain = null;
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    bgGain = audioCtx.createGain();
+    bgGain.gain.value = muted ? 0 : 0.04;
+    bgGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+}
 
 const chords = [
   [220,330,440],
@@ -597,7 +622,8 @@ const chords = [
   [294,440,587]
 ];
 let chordIndex = 0, chordTimeout;
-let muted = localStorage.getItem("muted")==="true";
+let muted = false;
+try { muted = localStorage.getItem("muted") === "true"; } catch(e) {}
 
 let sideHitFlash = 0;
 let explodeColorPhase = 0;
@@ -608,24 +634,29 @@ let sideHitFlashRight = 0;
 
 let hatapieFlash = 0;   // ★ はたピー接触時の色変化用
 
-let isLandscape = false;　// 回転時の警告用
+let isLandscape = false; // 回転時の警告用
 let calibrating = false; // ニュートラル設定中は回転判定を止める変数
-let gameOverTimeout = null;　// 回転時の時計を止める
+let gameOverTimeout = null; // 回転時の時計を止める
 
 const muteBtn = document.getElementById("muteBtn");
 
 muteBtn.onclick = () => {
   muted = !muted;
-  localStorage.setItem("muted", muted);
-  bgGain.gain.value = muted ? 0 : 0.04;   // ←元の bgGain を使う
+  try { localStorage.setItem("muted", muted); } catch(e) {}
+  if (bgGain) bgGain.gain.value = muted ? 0 : 0.04;
   muteBtn.textContent = muted ? "🔇" : "🔊";
 };
+muteBtn.addEventListener("touchend", e => {
+  e.preventDefault();
+  muteBtn.onclick();
+}, { passive: false });
 
 muteBtn.textContent = muted ? "🔇" : "🔊";
 
 
 function playChord() {
   if (isGameOver) return;
+  if (!audioCtx) return;
 
   const freqs = [220, 330]; // 優しい2音
 
@@ -657,6 +688,7 @@ function playChord() {
 
 function hitSound() {
   if (muted) return;
+  if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
 
@@ -709,6 +741,7 @@ function hitSound() {
 
 function bounceSound(){
   if (muted) return;
+  if (!audioCtx) return;
 
   const ctx = audioCtx;
   const osc = ctx.createOscillator();
@@ -733,6 +766,8 @@ function bounceSound(){
 
 
 function destroySound() {
+  if (muted) return;
+  if (!audioCtx) return;
   const now = audioCtx.currentTime;
 
   // ノイズ生成
@@ -755,7 +790,7 @@ function destroySound() {
 
   // 音量制御
   const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(muted ? 0 : 0.35, now);
+  gain.gain.setValueAtTime(0.35, now);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
 
   noise.connect(filter);
@@ -772,14 +807,19 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  canvas.width = w;
+  // iOS Safari では window.innerHeight がアドレスバー含みになる場合があるため
+  // visualViewport を優先して使用する
+  const w = (window.visualViewport ? window.visualViewport.width  : window.innerWidth);
+  const h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  canvas.width  = w;
   canvas.height = h;
 }
 
 resize();
 addEventListener("resize", resize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", resize);
+}
 
 const W = () => canvas.width;
 const H = () => canvas.height;
@@ -789,10 +829,14 @@ const gameoverLabel = document.getElementById("gameover");
 const livesLabel = document.getElementById("lives");
 
 const startMessage = document.getElementById("startMessage");  // スタート時に表示 → 自動で消す
+const startBtn = document.getElementById("startBtn");
+const ruleBtn  = document.getElementById("ruleBtn");
 
 
 
-let offset = 0, score = 0, hiScore = Number(localStorage.getItem("hiScore")||0);
+let offset = 0, score = 0;
+let hiScore = 0;
+try { hiScore = Number(localStorage.getItem("hiScore") || 0); } catch(e) {}
 let lives = 3, invincible = 0, isGameOver = false, gameStarted = false, scoreStarted = false;
 const roadWidth = 150;
 let ballDestroyed = false, ballScale = 1;
@@ -1306,7 +1350,7 @@ function updateGameOver() {
   }
 
   hiScore = Math.max(hiScore, score);
-  localStorage.setItem("hiScore", Math.floor(hiScore));
+  try { localStorage.setItem("hiScore", Math.floor(hiScore)); } catch(e) {}
   hiLabel.textContent = "HI " + Math.floor(hiScore);
 
 gameOverTimeout = setTimeout(() => {
@@ -1350,6 +1394,39 @@ addEventListener("keydown", e => {
 });
 addEventListener("keyup", e => keys[e.code] = false);
 
+/* ===== タッチ操作（スワイプ＆ドラッグ） ===== */
+let touchStartX = null, touchStartY = null;
+let touchCurrentX = null, touchCurrentY = null;
+let touchInputX = 0, touchInputY = 0;
+
+canvas.addEventListener("touchstart", e => {
+  if (!gameStarted) return;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchCurrentX = t.clientX;
+  touchCurrentY = t.clientY;
+}, { passive: true });
+
+canvas.addEventListener("touchmove", e => {
+  if (!gameStarted) return;
+  const t = e.touches[0];
+  touchCurrentX = t.clientX;
+  touchCurrentY = t.clientY;
+  const dx = touchCurrentX - touchStartX;
+  const dy = touchCurrentY - touchStartY;
+  const sensitivity = 0.012;
+  touchInputX = Math.max(-2, Math.min(2, dx * sensitivity));
+  touchInputY = Math.max(-2, Math.min(2, dy * sensitivity));
+}, { passive: true });
+
+canvas.addEventListener("touchend", e => {
+  touchStartX = null;
+  touchStartY = null;
+  touchInputX = 0;
+  touchInputY = 0;
+}, { passive: true });
+
 /* ===== ライフ表示 ===== */
 const maxLives = 5;
 function updateLivesDisplay() {
@@ -1380,8 +1457,8 @@ function updateBall(){
   const tx = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
   const ty = (keys.ArrowDown  ? 1 : 0) - (keys.ArrowUp   ? 1 : 0);
 
-  const targetX = tx + tiltInputX;
-  const targetY = ty + tiltInputY;
+  const targetX = tx + tiltInputX + touchInputX;
+  const targetY = ty + tiltInputY + touchInputY;
 
 
   inputX += (targetX - inputX) * 0.02;
@@ -1647,7 +1724,7 @@ if (gameStarted) {
 
 
 holes.forEach(h => {
-  h.y += 0.6;　// 1.4なら多め
+  h.y += 0.6; // 1.4なら多め
 });
 
 hatapies.forEach(h => {
@@ -1736,10 +1813,13 @@ animateTitle();
 const NEUTAL_SAMPLE_MAX = 30;   // 20〜40推奨
 
 
-/* ===== STARTボタン（iPad完全安定版） ===== */
-startBtn.onclick = async () => {
+/* ===== STARTボタン（全デバイス対応版） ===== */
+async function onStartBtn() {
 
-  /* ===== ジャイロ許可取得（iOS対策）===== */
+  /* ===== AudioContext 初期化（iOS: ユーザー操作内で必須）===== */
+  ensureAudioCtx();
+
+  /* ===== ジャイロ許可取得（iOS13+ 対策）===== */
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -1813,17 +1893,25 @@ startBtn.onclick = async () => {
 
     sideHitFlash = 0;
 
-    if (audioCtx.state === "suspended") await audioCtx.resume();
+    ensureAudioCtx();
     playChord();
 
     /* ===== スタートメッセージ ===== */
+    startMessage.style.opacity = "1";
     startMessage.textContent = "Flow with the α-waves";
     setTimeout(() => {
       startMessage.style.opacity = "0";
     }, 1500);
 
   }, CALIBRATION_TIME);
-};
+}
+
+// onclick と addEventListener 両方登録（iOS Safari 対応）
+startBtn.onclick = onStartBtn;
+startBtn.addEventListener('touchend', function(e) {
+  e.preventDefault(); // ダブルタップズーム防止
+  onStartBtn();
+}, { passive: false });
 
 
 
@@ -1831,7 +1919,7 @@ startBtn.onclick = async () => {
 // ===== ENTERキーでスタート =====
 addEventListener("keydown", e => {
   if (!gameStarted && (e.code === "Enter" || e.code === "NumpadEnter")) {
-    startBtn.onclick(); // ボタンの処理をそのまま呼び出す
+    onStartBtn();
   }
 });
 
@@ -1849,7 +1937,7 @@ function showLifeUpMessage(text = "Life Up!") {
 }
 
 function lifeUpSound() {
-  if (muted) return;       // ★ ミュート対応
+  if (muted) return;
   if (!audioCtx) return;
 
   const osc1 = audioCtx.createOscillator();
@@ -1891,6 +1979,7 @@ function ballPerspectiveRadius(y) {
 // ===== テルの消滅音 =====
 function tellDestroySound() {
   if (muted) return;
+  if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
 
@@ -1953,8 +2042,9 @@ function tellDestroySound() {
 
 // ★ はたピー取得音（ピコピコ系）作成
 function hatapiesSound() {
-  if (muted) return;   // ★ ミュート対応
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (muted) return;
+  if (!audioCtx) return;
+  const ctx = audioCtx;
   const now = ctx.currentTime;
 
   // 「は」「た」「ぴー」の順に周波数を変えて再生
@@ -1990,41 +2080,38 @@ function hatapiesSound() {
 }
 
 
-// ===== ルールボタン =====
-const ruleBtn = document.getElementById("ruleBtn");
+// ===== ルールボタン（DOMContentLoaded内で設定） =====
 
-ruleBtn.onclick = () => {
-  alert("ルール画面を開きます");
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  const ruleBtn = document.getElementById("ruleBtn");
+// ===== ルールボタン（インライン設定・iOS対応）=====
+(function() {
   const ruleOverlay = document.getElementById("ruleOverlay");
-  const ruleClose = document.getElementById("ruleClose");
+  const ruleClose   = document.getElementById("ruleClose");
 
   if (!ruleBtn || !ruleOverlay || !ruleClose) {
     console.warn("rule UI not ready");
     return;
   }
 
-ruleBtn.onclick = () => {
-  ruleOverlay.style.display = "flex";
-  requestAnimationFrame(() => {
-    ruleOverlay.classList.add("show");
-  });
-};
+  function openRule() {
+    ruleOverlay.style.display = "flex";
+    requestAnimationFrame(() => {
+      ruleOverlay.classList.add("show");
+    });
+  }
 
-ruleClose.onclick = () => {
-  ruleOverlay.classList.remove("show");
-  setTimeout(() => {
-    ruleOverlay.style.display = "none";
-  }, 300);
-};
+  function closeRule() {
+    ruleOverlay.classList.remove("show");
+    setTimeout(() => {
+      ruleOverlay.style.display = "none";
+    }, 300);
+  }
 
+  ruleBtn.onclick = openRule;
+  ruleBtn.addEventListener("touchend", e => { e.preventDefault(); openRule(); }, { passive: false });
 
-
-});
+  ruleClose.onclick = closeRule;
+  ruleClose.addEventListener("touchend", e => { e.preventDefault(); closeRule(); }, { passive: false });
+})();
 
 
 /* =========================
