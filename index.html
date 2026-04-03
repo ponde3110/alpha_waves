@@ -890,7 +890,11 @@ function handleOrientation(e) {
   let y = e.beta  - baseBeta;
 
   /* ===== 画面回転補正 ===== */
-  const angle = (screen.orientation && screen.orientation.angle) || 0;
+  // screen.orientation.angle が取れない端末では window.orientation を使う
+  const angle =
+    (screen.orientation && screen.orientation.angle != null)
+      ? screen.orientation.angle
+      : (typeof window.orientation === "number" ? window.orientation : 0);
 
   switch (angle) {
     case 90:
@@ -901,17 +905,9 @@ function handleOrientation(e) {
       y = -y;
       break;
     case 270:
+    case -90:
       [x, y] = [-y, x];
       break;
-  }
-
-  /* ===== iPad補正（最終段階で適用） ===== */
-  const isIPad =
-    /iPad/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIPad) {
-    [x, y] = [-y, x];
   }
 
   /* ===== 感度 ===== */
@@ -1344,10 +1340,7 @@ function updateGameOver() {
   clearTimeout(chordTimeout);
   isGameOver = true;
 
-  // 横向きならGAME OVER表示しない
-  if (!isLandscape) {
-    gameoverLabel.style.display = "block";
-  }
+  gameoverLabel.style.display = "block";
 
   hiScore = Math.max(hiScore, score);
   try { localStorage.setItem("hiScore", Math.floor(hiScore)); } catch(e) {}
@@ -1643,31 +1636,6 @@ let explodeFrame = 0;
 
 /* ===== ループ ===== */
 function loop(){
-
-  // ===== 横向きなら完全停止 =====
-if (isLandscape) {
-
-  // ① まず通常描画（背景や道など）
-  // ※ ここでは何も止めず、すでに描かれている画面を使う
-
-  // ② 半透明の暗幕をかける
-  ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // ③ 警告テキスト
-  ctx.fillStyle = "white";
-  ctx.font = "bold 28px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    "Please rotate your device to portrait mode",
-    canvas.width / 2,
-    canvas.height / 2
-  );
-
-  requestAnimationFrame(loop);
-  return;
-}
 
 
   // ===== ここから下が通常ゲーム処理 =====
@@ -2209,72 +2177,13 @@ drawRuleBall();
 drawRuleTell();
 drawRuleHatapie();
 
-// ===== 画面回転警告 =====
-const isMobileDevice =
-  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
+// ===== 画面回転警告（無効化：常に縦向きとして扱う） =====
 function updateOrientation() {
-  if (!isMobileDevice) {
-    isLandscape = false;
-    return;
-  }
-
-  const wasLandscape = isLandscape;
-  isLandscape = window.innerWidth > window.innerHeight;
-
-  /* ===============================
-     横向きの場合（警告中）
-     =============================== */
-  if (isLandscape) {
-    // UIを隠す
-    if (title) title.style.display = "none";
-    if (author) author.style.display = "none";
-    if (startBtn) startBtn.style.display = "none";
-    if (ruleBtn) ruleBtn.style.display = "none";
-    if (startMessage) startMessage.style.opacity = "0";
-    
-    // ゲームオーバーの文字も隠す
-    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
-
-    // ★【修正】タイマーを止めない（clearTimeoutを削除）
-    // これにより、横向き警告中もバックグラウンドで「3秒後にタイトルへ戻る」カウントが続きます。
-
-    return; 
-  }
-
-  /* ===============================
-     縦向きに戻った場合
-     =============================== */
-  // ゲーム開始前ならタイトル一式を表示
-  if (!gameStarted && !isGameOver) {
-    if (title) title.style.display = "";
-    if (author) author.style.display = "";
-    if (startBtn) startBtn.style.display = "";
-    if (ruleBtn) ruleBtn.style.display = "";
-  }
-
-  // ★【修正】縦に戻った時の処理
-  if (isGameOver) {
-    // すでにタイトルに戻るタイマーが作動中、あるいは完了しているはずなので、
-    // ここでタイマーを新規に作る必要はありません。
-    // まだリセット前（3秒以内）であれば、文字だけ再表示します。
-    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "block";
-  }
+  isLandscape = false;
 }
 
-// ※元々のコードに resetToTitle 関数がない場合は、以下のような処理をどこかに定義してください
-// (既存のコードで setTimeout(..., 3000) の中に書かれている内容を関数化したものです)
 function resetToTitle() {
-    gameStarted = false;
-    isGameOver = false;
-    if (typeof gameoverLabel !== 'undefined') gameoverLabel.style.display = "none";
-    if (title) title.style.display = "block";
-    if (author) author.style.display = "block";
-    if (startBtn) startBtn.style.display = "block";
-    if (ruleBtn) ruleBtn.style.display = "block";
-    gameOverTimeout = null;
-    // ...その他、変数のリセット処理など
+  // 使われない場合もあるが定義は残す
 }
 
 window.addEventListener("resize", updateOrientation);
@@ -2282,56 +2191,9 @@ window.addEventListener("orientationchange", updateOrientation);
 updateOrientation();
 
 
-/* ===== 画面向きチェック（最終安定版）===== */
+/* ===== 画面向きチェック（無効化：常に縦向きとして扱う）===== */
 function checkOrientation() {
-
-  // ---- タッチデバイス判定（iPad完全対応）----
-  const isTouchDevice = matchMedia("(pointer: coarse)").matches;
-
-  // ★ PCでは横向き制御を無効
-  if (!isTouchDevice) {
-    isLandscape = false;
-
-    const uiElements = [
-      title,
-      author,
-      startBtn,
-      ruleBtn,
-      gameoverLabel,
-      startMessage,
-      scoreLabel,
-      hiLabel,
-      livesLabel
-    ];
-
-    uiElements.forEach(el => {
-      if (!el) return;
-      el.style.display = "";
-    });
-
-    return;
-  }
-
-  // ---- スマホ・iPadのみ ----
-  const wasLandscape = isLandscape;
-  isLandscape = window.innerWidth > window.innerHeight;
-
-  const uiElements = [
-    title,
-    author,
-    startBtn,
-    ruleBtn,
-    gameoverLabel,
-    startMessage,
-    scoreLabel,
-    hiLabel,
-    livesLabel
-  ];
-
-  uiElements.forEach(el => {
-    if (!el) return;
-    el.style.display = isLandscape ? "none" : "";
-  });
+  isLandscape = false;
 }
 
 
