@@ -898,24 +898,25 @@ function handleOrientation(e) {
   let x, y;
 
   if (isIPad) {
-    // iPad は縦持ち時に beta=前後傾き, gamma=左右傾きだが
-    // 実際の画面座標では beta → Y軸, gamma → X軸 が正しい
-    // ただし beta の符号が通常と逆になるため反転する
+    // iPad は deviceorientation の beta/gamma が
+    // 通常スマホと比べて 90度ずれて報告されるため補正する
+    // 縦持ち(0): 右傾き=gamma正 → x正、前傾き=beta正 → y正
+    // 横持ち(90): landscape-left → beta/gamma を入れ替えて補正
     switch (angle) {
-      case 90:
-        x =  rawBeta;
-        y = -rawGamma;
+      case 90:   // ホームボタンが右（landscape-left）
+        x =  rawGamma;
+        y =  rawBeta;
         break;
       case 270:
-      case -90:
-        x = -rawBeta;
-        y =  rawGamma;
+      case -90:  // ホームボタンが左（landscape-right）
+        x = -rawGamma;
+        y = -rawBeta;
         break;
-      case 180:
+      case 180:  // 上下逆さ縦持ち
         x = -rawGamma;
         y =  rawBeta;
         break;
-      default: // 0: 縦持ち
+      default:   // 0: 通常縦持ち
         x =  rawGamma;
         y = -rawBeta;
         break;
