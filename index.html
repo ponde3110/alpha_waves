@@ -903,22 +903,22 @@ function handleOrientation(e) {
     // 縦持ち(0): 右傾き=gamma正 → x正、前傾き=beta正 → y正
     // 横持ち(90): landscape-left → beta/gamma を入れ替えて補正
     switch (angle) {
-      case 90:   // ホームボタンが右（landscape-left）
-        x =  rawGamma;
-        y =  rawBeta;
+      case 90:   // 横持ち（landscape-left）: 時計回り90度回転 → (x,y)=(rawBeta,-rawGamma)
+        x =  rawBeta;
+        y = -rawGamma;
         break;
       case 270:
-      case -90:  // ホームボタンが左（landscape-right）
-        x = -rawGamma;
-        y = -rawBeta;
+      case -90:  // 横持ち（landscape-right）: 反時計回り90度回転 → (x,y)=(-rawBeta,rawGamma)
+        x = -rawBeta;
+        y =  rawGamma;
         break;
       case 180:  // 上下逆さ縦持ち
         x = -rawGamma;
-        y =  rawBeta;
-        break;
-      default:   // 0: 通常縦持ち
-        x =  rawGamma;
         y = -rawBeta;
+        break;
+      default:   // 0: 通常縦持ち（左右OK・上下反転修正）
+        x =  rawGamma;
+        y =  rawBeta;
         break;
     }
   } else {
