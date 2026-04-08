@@ -886,28 +886,57 @@ function handleOrientation(e) {
 
   if (baseGamma === null || baseBeta === null) return;
 
-  let x = e.gamma - baseGamma;
-  let y = e.beta  - baseBeta;
+  let rawBeta  = e.beta  - baseBeta;
+  let rawGamma = e.gamma - baseGamma;
 
   /* ===== 画面回転補正 ===== */
-  // screen.orientation.angle が取れない端末では window.orientation を使う
   const angle =
     (screen.orientation && screen.orientation.angle != null)
       ? screen.orientation.angle
       : (typeof window.orientation === "number" ? window.orientation : 0);
 
-  switch (angle) {
-    case 90:
-      [x, y] = [y, -x];
-      break;
-    case 180:
-      x = -x;
-      y = -y;
-      break;
-    case 270:
-    case -90:
-      [x, y] = [-y, x];
-      break;
+  let x, y;
+
+  if (isIPad) {
+    // iPad は縦持ち時に beta=前後傾き, gamma=左右傾きだが
+    // 実際の画面座標では beta → Y軸, gamma → X軸 が正しい
+    // ただし beta の符号が通常と逆になるため反転する
+    switch (angle) {
+      case 90:
+        x =  rawBeta;
+        y = -rawGamma;
+        break;
+      case 270:
+      case -90:
+        x = -rawBeta;
+        y =  rawGamma;
+        break;
+      case 180:
+        x = -rawGamma;
+        y =  rawBeta;
+        break;
+      default: // 0: 縦持ち
+        x =  rawGamma;
+        y = -rawBeta;
+        break;
+    }
+  } else {
+    x = rawGamma;
+    y = rawBeta;
+
+    switch (angle) {
+      case 90:
+        [x, y] = [y, -x];
+        break;
+      case 180:
+        x = -x;
+        y = -y;
+        break;
+      case 270:
+      case -90:
+        [x, y] = [-y, x];
+        break;
+    }
   }
 
   /* ===== 感度 ===== */
